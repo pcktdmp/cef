@@ -9,14 +9,14 @@ type CefEventInterface interface {
 }
 
 type CefEvent struct {
-	version            string
-	deviceVendor       string
-	deviceProduct      string
-	deviceVersion      string
-	deviceEventClassId string
-	name               string
-	severity           string
-	extensions         map[string]string
+	Version            string
+	DeviceVendor       string
+	DeviceProduct      string
+	DeviceVersion      string
+	DeviceEventClassId string
+	Name               string
+	Severity           string
+	Extensions         map[string]string
 }
 
 // todo: don't dupe the function but handle
@@ -45,18 +45,18 @@ func cefEscapeExtension(field string) string {
 func (event CefEvent) Generate() string {
 
 	// todo: do this nicely with methods
-	event.version = cefEscapeField(event.version)
-	event.deviceVendor = cefEscapeField(event.deviceVendor)
-	event.deviceProduct = cefEscapeField(event.deviceProduct)
-	event.deviceVersion = cefEscapeField(event.deviceVersion)
-	event.deviceEventClassId = cefEscapeField(event.deviceEventClassId)
-	event.name = cefEscapeField(event.name)
-	event.severity = cefEscapeField(event.severity)
+	event.Version = cefEscapeField(event.Version)
+	event.DeviceVendor = cefEscapeField(event.DeviceVendor)
+	event.DeviceProduct = cefEscapeField(event.DeviceProduct)
+	event.DeviceVersion = cefEscapeField(event.DeviceVersion)
+	event.DeviceEventClassId = cefEscapeField(event.DeviceEventClassId)
+	event.Name = cefEscapeField(event.Name)
+	event.Severity = cefEscapeField(event.Severity)
 
 	var extension_string string
 
 	// construct the extension string according to the CEF format
-	for k, v := range event.extensions {
+	for k, v := range event.Extensions {
 		extension_string += fmt.Sprintf("%s=%s ", cefEscapeExtension(k), cefEscapeExtension(v))
 	}
 
@@ -65,8 +65,8 @@ func (event CefEvent) Generate() string {
 	p := &extension_string
 	*p = strings.TrimRight(extension_string, " ")
 
-	return fmt.Sprintf("CEF:%v|%v|%v|%v|%v|%v|%v|%v", event.version,
-		event.deviceVendor, event.deviceProduct,
-		event.deviceVersion, event.deviceEventClassId,
-		event.name, event.severity, extension_string)
+	return fmt.Sprintf("CEF:%v|%v|%v|%v|%v|%v|%v|%v", event.Version,
+		event.DeviceVendor, event.DeviceProduct,
+		event.DeviceVersion, event.DeviceEventClassId,
+		event.Name, event.Severity, extension_string)
 }
