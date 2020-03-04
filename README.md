@@ -1,6 +1,10 @@
 # Common Event Format in Go
 Go Package for ArcSight's Common Event Format
 
+# Motivation
+
+Learning Go, help people who need to generate CEF events in Golang.
+
 ## TL;DR
 
 ### Install the package
