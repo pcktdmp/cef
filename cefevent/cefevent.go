@@ -65,8 +65,10 @@ func (event CefEvent) Generate() string {
 	p := &extension_string
 	*p = strings.TrimRight(extension_string, " ")
 
-	return fmt.Sprintf("CEF:%v|%v|%v|%v|%v|%v|%v|%v", event.Version,
-		event.DeviceVendor, event.DeviceProduct,
-		event.DeviceVersion, event.DeviceEventClassId,
-		event.Name, event.Severity, extension_string)
+	return fmt.Sprintf(
+		"CEF:%v|%v|%v|%v|%v|%v|%v|%v",
+		event.Version, event.DeviceVendor,
+		event.DeviceProduct, event.DeviceVersion,
+		event.DeviceEventClassId, event.Name,
+		event.Severity, extension_string)
 }
