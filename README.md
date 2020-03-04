@@ -15,7 +15,7 @@ Go Package for ArcSight's Common Event Format
 
 ### cef.go
 
-```
+```go
 package main
 
 import (
