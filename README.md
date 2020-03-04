@@ -11,7 +11,9 @@ Go Package for ArcSight's Common Event Format
 
 ### Install the package
 
-`go get github.com/pcktdmp/cef/cefevent`
+```bash
+$ go get github.com/pcktdmp/cef/cefevent
+```
 
 ### cef.go
 
@@ -46,7 +48,7 @@ func main() {
 ```
 ### Example output
 
-```
+```bash
 $ ./cef
 CEF:1|Cool Vendor|Cool Product|1.0|FLAKY_EVENT|Something flaky happened.|3|sourceAddress=127.0.0.1 requestClientApplication=Go-http-client/1.1
 ```
