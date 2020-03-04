@@ -1,5 +1,5 @@
 # Common Event Format in Go
-Go Package for ArcSight's CEF
+Go Package for ArcSight's Common Event Format
 
 ## Not yet implemented
 
