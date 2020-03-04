@@ -5,9 +5,6 @@ import (
 	"strings"
 )
 
-type CefEventInterface interface {
-}
-
 type CefEvent struct {
 	Version            string
 	DeviceVendor       string
@@ -53,17 +50,17 @@ func (event CefEvent) Generate() string {
 	event.Name = cefEscapeField(event.Name)
 	event.Severity = cefEscapeField(event.Severity)
 
-	var extension_string string
+	var extensionString string
 
 	// construct the extension string according to the CEF format
 	for k, v := range event.Extensions {
-		extension_string += fmt.Sprintf("%s=%s ", cefEscapeExtension(k), cefEscapeExtension(v))
+		extensionString += fmt.Sprintf("%s=%s ", cefEscapeExtension(k), cefEscapeExtension(v))
 	}
 
 	// make sure there is not a trailing space for the extension
 	// fields according to the CEF standard.
-	p := &extension_string
-	*p = strings.TrimRight(extension_string, " ")
+	p := &extensionString
+	*p = strings.TrimRight(extensionString, " ")
 
 	return fmt.Sprintf(
 		"CEF:%v|%v|%v|%v|%v|%v|%v|%v",
