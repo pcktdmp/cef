@@ -21,8 +21,9 @@ type CefEvent struct {
 func cefEscapeField(field string) string {
 
 	replacer := strings.NewReplacer(
-		"\\", "\\\\", "|", "\\|",
-		"\n", "\\n", "=", "\\n",
+		"\\", "\\\\",
+		"|", "\\|",
+		"\n", "\\n",
 	)
 
 	return replacer.Replace(field)
@@ -34,7 +35,7 @@ func cefEscapeExtension(field string) string {
 
 	replacer := strings.NewReplacer(
 		"\\", "\\\\", "\n",
-		"\\n", "=", "\\n",
+		"\\n", "=", "\\=",
 	)
 
 	return replacer.Replace(field)
