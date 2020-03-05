@@ -50,17 +50,17 @@ func (event CefEvent) Generate() string {
 	event.Name = cefEscapeField(event.Name)
 	event.Severity = cefEscapeField(event.Severity)
 
-	var extensionString strings.Builder
+	var p strings.Builder
 
 	// construct the extension string according to the CEF format
 	for k, v := range event.Extensions {
-		extensionString.Write(fmt.Sprintf("%s=%s ", cefEscapeExtension(k), cefEscapeExtension(v))
+		p.WriteString(fmt.Sprintf("%s=%s ", cefEscapeExtension(k), cefEscapeExtension(v)))
 	}
 
 	// make sure there is not a trailing space for the extension
 	// fields according to the CEF standard.
-	p := &extensionString
-	*p = strings.TrimRight(extensionString, " ")
+	extensionString := p.String()
+	extensionString = strings.TrimRight(extensionString, " ")
 
 	return fmt.Sprintf(
 		"CEF:%v|%v|%v|%v|%v|%v|%v|%v",
