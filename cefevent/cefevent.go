@@ -20,23 +20,24 @@ type CefEvent struct {
 // with methods part of an Extension struct
 func cefEscapeField(field string) string {
 
-	field = strings.ReplaceAll(field, "\\", "\\\\")
-	field = strings.ReplaceAll(field, "|", "\\|")
-	field = strings.ReplaceAll(field, "\n", "\\n")
-	field = strings.ReplaceAll(field, "=", "\\=")
+	replacer := strings.NewReplacer(
+		"\\", "\\\\", "|", "\\|",
+		"\n", "\\n", "=", "\\n",
+	)
 
-	return field
+	return replacer.Replace(field)
 }
 
 // todo: don't dupe the function but handle
 // with methods part of an Extension struct
 func cefEscapeExtension(field string) string {
 
-	field = strings.ReplaceAll(field, "\\", "\\\\")
-	field = strings.ReplaceAll(field, "\n", "\\n")
-	field = strings.ReplaceAll(field, "=", "\\=")
+	replacer := strings.NewReplacer(
+		"\\", "\\\\", "\n",
+		"\\n", "=", "\\n",
+	)
 
-	return field
+	return replacer.Replace(field)
 }
 
 func (event CefEvent) Generate() string {
@@ -54,12 +55,16 @@ func (event CefEvent) Generate() string {
 
 	// construct the extension string according to the CEF format
 	for k, v := range event.Extensions {
-		p.WriteString(fmt.Sprintf("%s=%s ", cefEscapeExtension(k), cefEscapeExtension(v)))
+		p.WriteString(fmt.Sprintf(
+			"%s=%s ",
+			cefEscapeExtension(k),
+			cefEscapeExtension(v)),
+		)
 	}
 
 	// make sure there is not a trailing space for the extension
 	// fields according to the CEF standard.
-	extensionString := strings.TrimRight(p.String(), " ")
+	extensionString := strings.TrimSpace(p.String())
 
 	return fmt.Sprintf(
 		"CEF:%v|%v|%v|%v|%v|%v|%v|%v",
