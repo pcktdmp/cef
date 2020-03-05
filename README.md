@@ -30,7 +30,7 @@ func main() {
 	f["requestClientApplication"] = "Go-http-client/1.1"
 
 	event := cefevent.CefEvent{
-		Version:            "1",
+		Version:            "0",
 		DeviceVendor:       "Cool Vendor",
 		DeviceProduct:      "Cool Product",
 		DeviceVersion:      "1.0",
