@@ -59,8 +59,7 @@ func (event CefEvent) Generate() string {
 
 	// make sure there is not a trailing space for the extension
 	// fields according to the CEF standard.
-	extensionString := p.String()
-	extensionString = strings.TrimRight(extensionString, " ")
+	extensionString := strings.TrimRight(p.String(), " ")
 
 	return fmt.Sprintf(
 		"CEF:%v|%v|%v|%v|%v|%v|%v|%v",
