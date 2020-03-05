@@ -7,9 +7,9 @@ import (
 
 func TestCefEvent(t *testing.T) {
 
-	extensions := make(map[string]string)
-	extensions["sourceAddress"] = "127.0.0.1"
-	extensions["requestClientApplication"] = "Go-http-client/1.1"
+	ext := make(map[string]string)
+	ext["sourceAddress"] = "127.0.0.1"
+	ext["requestClientApplication"] = "Go-http-client/1.1"
 
 	event := cefevent.CefEvent{
 		Version:            "0",
@@ -19,7 +19,7 @@ func TestCefEvent(t *testing.T) {
 		DeviceEventClassId: "COOL_THING",
 		Name:               "Something cool happened.",
 		Severity:           "Unknown",
-		Extensions:         extensions,
+		Extensions:         ext,
 	}
 
 	want := "CEF:0|Cool Vendor|Cool Product|1.0|COOL_THING|Something cool happened.|Unknown|sourceAddress=127.0.0.1 requestClientApplication=Go-http-client/1.1"
