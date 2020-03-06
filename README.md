@@ -1,7 +1,7 @@
-![Go Workflow](https://github.com/pcktdmp/cef/workflows/Go/badge.svg)
-
 # Common Event Format in Go
 Go Package for ArcSight's Common Event Format
+
+![Go Workflow](https://github.com/pcktdmp/cef/workflows/Go/badge.svg)
 
 # Motivation
 
