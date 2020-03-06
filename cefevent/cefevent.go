@@ -41,7 +41,7 @@ func cefEscapeExtension(field string) string {
 	return replacer.Replace(field)
 }
 
-func (event CefEvent) Generate() string {
+func (event *CefEvent) Generate() string {
 
 	// todo: do this nicely with methods
 	event.Version = cefEscapeField(event.Version)
