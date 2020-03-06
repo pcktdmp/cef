@@ -1,6 +1,7 @@
 package cefevent
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -14,6 +15,15 @@ type CefEvent struct {
 	Name               string
 	Severity           string
 	Extensions         map[string]string
+}
+
+func isSet(field ...string) bool {
+	for _, f := range field {
+		if f == "" {
+			return false
+		}
+	}
+	return true
 }
 
 // todo: don't dupe the function but handle
@@ -41,16 +51,30 @@ func cefEscapeExtension(field string) string {
 	return replacer.Replace(field)
 }
 
-func (event *CefEvent) Generate() string {
+func (event *CefEvent) Generate() (string, error) {
 
-	// todo: do this nicely with methods
-	event.Version = cefEscapeField(event.Version)
-	event.DeviceVendor = cefEscapeField(event.DeviceVendor)
-	event.DeviceProduct = cefEscapeField(event.DeviceProduct)
-	event.DeviceVersion = cefEscapeField(event.DeviceVersion)
-	event.DeviceEventClassId = cefEscapeField(event.DeviceEventClassId)
-	event.Name = cefEscapeField(event.Name)
-	event.Severity = cefEscapeField(event.Severity)
+	if (isSet)(
+		event.Version,
+		event.DeviceVendor,
+		event.DeviceProduct,
+		event.DeviceVersion,
+		event.DeviceEventClassId,
+		event.Name,
+		event.Severity) {
+
+		event.Version = cefEscapeField(event.Version)
+		event.DeviceVendor = cefEscapeField(event.DeviceVendor)
+		event.DeviceProduct = cefEscapeField(event.DeviceProduct)
+		event.DeviceVersion = cefEscapeField(event.DeviceVersion)
+		event.DeviceEventClassId = cefEscapeField(event.DeviceEventClassId)
+		event.Name = cefEscapeField(event.Name)
+		event.Severity = cefEscapeField(event.Severity)
+
+	} else {
+
+		return "", errors.New("Not all mandatory CEF fields are set.")
+
+	}
 
 	var p strings.Builder
 
@@ -67,10 +91,13 @@ func (event *CefEvent) Generate() string {
 	// fields according to the CEF standard.
 	extensionString := strings.TrimSpace(p.String())
 
-	return fmt.Sprintf(
+	eventCef := fmt.Sprintf(
 		"CEF:%v|%v|%v|%v|%v|%v|%v|%v",
 		event.Version, event.DeviceVendor,
 		event.DeviceProduct, event.DeviceVersion,
 		event.DeviceEventClassId, event.Name,
-		event.Severity, extensionString)
+		event.Severity, extensionString,
+	)
+
+	return eventCef, nil
 }
