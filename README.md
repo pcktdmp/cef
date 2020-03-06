@@ -1,6 +1,10 @@
 # Common Event Format in Go
 Go Package for ArcSight's Common Event Format
 
+# Build Status
+
+![Go Workflow](https://github.com/pcktdmp/cef/workflows/Go/badge.svg)
+
 # Motivation
 
 Learning Go, help people who need to generate CEF events in Golang.
