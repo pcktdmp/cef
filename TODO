@@ -1,6 +1,7 @@
-* Write tests
 * Use interfaces
 * Improve overall code construct
 * Work with default values or force mandatory fields
 * Implement extension fields
+* Implement interface for struct and write use reflect to verify
+  mandatory fields being set
 * ..
