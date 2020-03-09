@@ -3,8 +3,13 @@ package cefevent
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 )
+
+type CefEventer interface {
+	Generate() string
+}
 
 type CefEvent struct {
 	Version            string
@@ -17,17 +22,6 @@ type CefEvent struct {
 	Extensions         map[string]string
 }
 
-func isSet(field ...string) bool {
-	for _, f := range field {
-		if f == "" {
-			return false
-		}
-	}
-	return true
-}
-
-// todo: don't dupe the function but handle
-// with methods part of an Extension struct
 func cefEscapeField(field string) string {
 
 	replacer := strings.NewReplacer(
@@ -39,8 +33,6 @@ func cefEscapeField(field string) string {
 	return replacer.Replace(field)
 }
 
-// todo: don't dupe the function but handle
-// with methods part of an Extension struct
 func cefEscapeExtension(field string) string {
 
 	replacer := strings.NewReplacer(
@@ -53,28 +45,37 @@ func cefEscapeExtension(field string) string {
 
 func (event *CefEvent) Generate() (string, error) {
 
-	if (isSet)(
-		event.Version,
-		event.DeviceVendor,
-		event.DeviceProduct,
-		event.DeviceVersion,
-		event.DeviceEventClassId,
-		event.Name,
-		event.Severity) {
+	assertEvent := reflect.ValueOf(event).Elem()
 
-		event.Version = cefEscapeField(event.Version)
-		event.DeviceVendor = cefEscapeField(event.DeviceVendor)
-		event.DeviceProduct = cefEscapeField(event.DeviceProduct)
-		event.DeviceVersion = cefEscapeField(event.DeviceVersion)
-		event.DeviceEventClassId = cefEscapeField(event.DeviceEventClassId)
-		event.Name = cefEscapeField(event.Name)
-		event.Severity = cefEscapeField(event.Severity)
-
-	} else {
-
-		return "", errors.New("Not all mandatory CEF fields are set.")
-
+	// define an array with all the mandatory
+	// CEF fields.
+	mandatoryFields := []string{
+		"Version",
+		"DeviceVendor",
+		"DeviceProduct",
+		"DeviceVersion",
+		"DeviceEventClassId",
+		"Name",
+		"Severity",
 	}
+
+	// loop over all mandatory fields
+	// and verify if they are not empty
+	// according to their String type.
+	for _, field := range mandatoryFields {
+
+		if assertEvent.FieldByName(field).String() == "" {
+			return "", errors.New("Not all mandatory CEF fields are set.")
+		}
+	}
+
+	event.Version = cefEscapeField(event.Version)
+	event.DeviceVendor = cefEscapeField(event.DeviceVendor)
+	event.DeviceProduct = cefEscapeField(event.DeviceProduct)
+	event.DeviceVersion = cefEscapeField(event.DeviceVersion)
+	event.DeviceEventClassId = cefEscapeField(event.DeviceEventClassId)
+	event.Name = cefEscapeField(event.Name)
+	event.Severity = cefEscapeField(event.Severity)
 
 	var p strings.Builder
 
