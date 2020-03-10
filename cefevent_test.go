@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-event := cefevent.CefEvent{
+var event = cefevent.CefEvent{
 	Version:            "0",
 	DeviceVendor:       "Cool Vendor",
 	DeviceProduct:      "Cool Product",
