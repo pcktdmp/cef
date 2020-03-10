@@ -17,11 +17,14 @@ var event = cefevent.CefEvent{
 
 func TestCefEventExpected(t *testing.T) {
 
-	ext := make(map[string]string)
-	ext["sourceAddress"] = "127.0.0.1"
+	extLocal := make(map[string]string)
+	extLocal["sourceAddress"] = "127.0.0.1"
+
+	expectedEvent := event
+	expectedEvent.Extensions = extLocal
 
 	want := "CEF:0|Cool Vendor|Cool Product|1.0|COOL_THING|Something cool happened.|Unknown|sourceAddress=127.0.0.1"
-	got, _ := event.Generate()
+	got, _ := expectedEvent.Generate()
 
 	if want != got {
 		t.Errorf("event.Generate() = %q, want %q", got, want)
@@ -31,11 +34,15 @@ func TestCefEventExpected(t *testing.T) {
 
 func TestCefEventEscape(t *testing.T) {
 
-	ext := make(map[string]string)
-	ext["sourceAddress\\"] = "\n127.0.0.1="
+	extLocal := make(map[string]string)
+	extLocal["sourceAddress\\"] = "\n127.0.0.1="
+
+	borkyEvent := event
+	borkyEvent.DeviceVendor = "\\Cool\nVendor|"
+	borkyEvent.Extensions = extLocal
 
 	want := "CEF:0|\\\\Cool\\nVendor\\||Cool Product|1.0|COOL_THING|Something cool happened.|Unknown|sourceAddress\\\\=\\n127.0.0.1\\="
-	got, _ := event.Generate()
+	got, _ := borkyEvent.Generate()
 
 	if want != got {
 		t.Errorf("event.Generate() = %q, want %q", got, want)
