@@ -8,7 +8,8 @@ import (
 )
 
 type CefEventer interface {
-	Generate() string
+	Generate() (string, error)
+	Validate() bool
 }
 
 type CefEvent struct {
@@ -43,7 +44,7 @@ func cefEscapeExtension(field string) string {
 	return replacer.Replace(field)
 }
 
-func (event *CefEvent) Generate() (string, error) {
+func (event *CefEvent) Validate() bool {
 
 	assertEvent := reflect.ValueOf(event).Elem()
 
@@ -65,8 +66,18 @@ func (event *CefEvent) Generate() (string, error) {
 	for _, field := range mandatoryFields {
 
 		if assertEvent.FieldByName(field).String() == "" {
-			return "", errors.New("Not all mandatory CEF fields are set.")
+			return false
 		}
+	}
+
+	return true
+
+}
+
+func (event CefEvent) Generate() (string, error) {
+
+	if !CefEventer.Validate(&event) {
+		return "", errors.New("Not all mandatory CEF fields are set.")
 	}
 
 	event.Version = cefEscapeField(event.Version)
