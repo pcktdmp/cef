@@ -60,9 +60,9 @@ func (event *CefEvent) Validate() bool {
 		"Severity",
 	}
 
-	//  loop over all mandatory fields
-	//  and verify if they are not empty
-	//  according to their String type.
+	// loop over all mandatory fields
+	// and verify if they are not empty
+	// according to their String type.
 	for _, field := range mandatoryFields {
 
 		if assertEvent.FieldByName(field).String() == "" {
