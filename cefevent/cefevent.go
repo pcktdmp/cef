@@ -3,6 +3,8 @@ package cefevent
 import (
 	"errors"
 	"fmt"
+	"log"
+	"os"
 	"reflect"
 	"strings"
 )
@@ -10,6 +12,7 @@ import (
 type CefEventer interface {
 	Generate() (string, error)
 	Validate() bool
+	Log() (bool, error)
 }
 
 type CefEvent struct {
@@ -72,6 +75,26 @@ func (event *CefEvent) Validate() bool {
 
 	return true
 
+}
+
+// Log should be used as a stub in most cases, it either
+// succeeds generating the CEF event and send it to stdout
+// or doesnt and logs that to stderr. This function
+// plays well inside containers.
+func (event *CefEvent) Log() (bool, error) {
+
+	logMessage, err := event.Generate()
+
+	if err != nil {
+		log.SetOutput(os.Stderr)
+		errMsg := "Unable to generate and thereby log the CEF message."
+		log.Println(errMsg)
+		return false, errors.New(errMsg)
+	}
+
+	log.SetOutput(os.Stdout)
+	log.Println(logMessage)
+	return true, nil
 }
 
 func (event CefEvent) Generate() (string, error) {

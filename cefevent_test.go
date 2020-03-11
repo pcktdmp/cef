@@ -143,3 +143,23 @@ func TestCefEventerValidate(t *testing.T) {
 		t.Errorf("Validation should fail here.")
 	}
 }
+
+func TestCefEventerLoggingSuccess(t *testing.T) {
+
+	_, err := event.Log()
+
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+}
+
+func TestCefEventerLoggingFail(t *testing.T) {
+
+	brokenEvent := event
+	brokenEvent.Version = ""
+	_, err := brokenEvent.Log()
+
+	if err == nil {
+		t.Errorf("%v", err)
+	}
+}
