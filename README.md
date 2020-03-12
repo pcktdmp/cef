@@ -54,8 +54,7 @@ func main() {
 
 	if err != nil {
 		fmt.Println("Need to handle this.")
-    }
-
+	}
 }
 
 ```
