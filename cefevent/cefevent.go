@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"reflect"
+	"sort"
 	"strings"
 )
 
@@ -113,12 +114,18 @@ func (event CefEvent) Generate() (string, error) {
 
 	var p strings.Builder
 
+	var sortedExtensions []string
+	for k := range event.Extensions {
+		sortedExtensions = append(sortedExtensions, k)
+	}
+	sort.Strings(sortedExtensions)
+
 	// construct the extension string according to the CEF format
-	for k, v := range event.Extensions {
+	for _, k := range sortedExtensions {
 		p.WriteString(fmt.Sprintf(
 			"%s=%s ",
 			cefEscapeExtension(k),
-			cefEscapeExtension(v)),
+			cefEscapeExtension(event.Extensions[k])),
 		)
 	}
 
