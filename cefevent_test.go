@@ -1,7 +1,7 @@
 package main
 
 import (
-	"cefevent/cefevent"
+	"github.com/pcktdmp/cef/cefevent"
 	"testing"
 )
 
