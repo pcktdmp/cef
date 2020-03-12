@@ -40,9 +40,10 @@ func main() {
 		DeviceEventClassId: "FLAKY_EVENT",
 		Name:               "Something flaky happened.",
 		Severity:           "3",
-		Extensions:         f}.Generate()
+		Extensions:         f}
 
-	fmt.Println(event)
+	cef, _ := event.Generate()
+	fmt.Println(cef)
 
 	// send a CEF event as log message to stdout
 	event.Log()
@@ -51,21 +52,19 @@ func main() {
 	// sending the log
 	_, err := event.Log()
 
+	if err != nil {
+		fmt.Println("Need to handle this.")
+	}
 }
 
 ```
 ### Example output
 
 ```bash
-$ ./cef
-CEF:0|Cool Vendor|Cool Product|1.0|FLAKY_EVENT|Something flaky happened.|3|sourceAddress=127.0.0.1 requestClientApplication=Go-http-client/1.1
-```
-
-### Example log output
-
-```bash
-$ ./ceflog
-2020/03/11 21:49:45 CEF:0|Cool Vendor|Cool Product|1.0|FLAKY_EVENT|Something flaky happened.|3|sourceAddress=127.0.0.1 requestClientApplication=Go-http-client/1.1
+$ go run cef.go
+CEF:0|Cool Vendor|Cool Product|1.0|FLAKY_EVENT|Something flaky happened.|3|requestClientApplication=Go-http-client/1.1 sourceAddress=127.0.0.1
+2020/03/12 21:28:19 CEF:0|Cool Vendor|Cool Product|1.0|FLAKY_EVENT|Something flaky happened.|3|requestClientApplication=Go-http-client/1.1 sourceAddress=127.0.0.1
+2020/03/12 21:28:19 CEF:0|Cool Vendor|Cool Product|1.0|FLAKY_EVENT|Something flaky happened.|3|requestClientApplication=Go-http-client/1.1 sourceAddress=127.0.0.1
 ```
 
 ## Not yet implemented
