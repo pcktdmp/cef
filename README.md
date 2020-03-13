@@ -40,7 +40,8 @@ func main() {
 		DeviceEventClassId: "FLAKY_EVENT",
 		Name:               "Something flaky happened.",
 		Severity:           "3",
-		Extensions:         f}
+		Extensions:         f,
+	}
 
 	cef, _ := event.Generate()
 	fmt.Println(cef)
