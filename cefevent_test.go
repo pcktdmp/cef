@@ -1,12 +1,13 @@
 package main
 
 import (
-	"github.com/pcktdmp/cef/cefevent"
 	"testing"
+
+	"github.com/pcktdmp/cef/cefevent"
 )
 
 var event = cefevent.CefEvent{
-	Version:            "0",
+	Version:            0,
 	DeviceVendor:       "Cool Vendor",
 	DeviceProduct:      "Cool Product",
 	DeviceVersion:      "1.0",
@@ -18,12 +19,12 @@ var event = cefevent.CefEvent{
 func TestCefEventExpected(t *testing.T) {
 
 	extLocal := make(map[string]string)
-	extLocal["sourceAddress"] = "127.0.0.1"
+	extLocal["src"] = "127.0.0.1"
 
 	expectedEvent := event
 	expectedEvent.Extensions = extLocal
 
-	want := "CEF:0|Cool Vendor|Cool Product|1.0|COOL_THING|Something cool happened.|Unknown|sourceAddress=127.0.0.1"
+	want := "CEF:0|Cool Vendor|Cool Product|1.0|COOL_THING|Something cool happened.|Unknown|src=127.0.0.1"
 	got, _ := expectedEvent.Generate()
 
 	if want != got {
@@ -35,13 +36,13 @@ func TestCefEventExpected(t *testing.T) {
 func TestCefEventEscape(t *testing.T) {
 
 	extLocal := make(map[string]string)
-	extLocal["sourceAddress\\"] = "\n127.0.0.1="
+	extLocal["src\\"] = "\n127.0.0.1="
 
 	borkyEvent := event
 	borkyEvent.DeviceVendor = "\\Cool\nVendor|"
 	borkyEvent.Extensions = extLocal
 
-	want := "CEF:0|\\\\Cool\\nVendor\\||Cool Product|1.0|COOL_THING|Something cool happened.|Unknown|sourceAddress\\\\=\\n127.0.0.1\\="
+	want := "CEF:0|\\\\Cool\\nVendor\\||Cool Product|1.0|COOL_THING|Something cool happened.|Unknown|src\\\\=\\n127.0.0.1\\="
 	got, _ := borkyEvent.Generate()
 
 	if want != got {
@@ -53,7 +54,7 @@ func TestCefEventEscape(t *testing.T) {
 func TestCefEventMandatoryVersionField(t *testing.T) {
 
 	brokenEvent := event
-	brokenEvent.Version = ""
+	brokenEvent.DeviceVendor = ""
 	_, err := brokenEvent.Generate()
 
 	if err == nil {
@@ -137,9 +138,9 @@ func TestCefEventerValidate(t *testing.T) {
 		t.Errorf("Validation should be succesful here.")
 	}
 
-	noVersion := event
-	noVersion.Version = ""
-	if someImplementationOfCefEventer(&noVersion) {
+	noDeviceVendor := event
+	noDeviceVendor.DeviceVendor = ""
+	if someImplementationOfCefEventer(&noDeviceVendor) {
 		t.Errorf("Validation should fail here.")
 	}
 }
@@ -156,7 +157,7 @@ func TestCefEventerLoggingSuccess(t *testing.T) {
 func TestCefEventerLoggingFail(t *testing.T) {
 
 	brokenEvent := event
-	brokenEvent.Version = ""
+	brokenEvent.DeviceVendor = ""
 	_, err := brokenEvent.Log()
 
 	if err == nil {
