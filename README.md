@@ -29,7 +29,7 @@ import (
 func main() {
 
 	f := make(map[string]string)
-	f["sourceAddress"] = "127.0.0.1"
+	f["src"] = "127.0.0.1"
 	f["requestClientApplication"] = "Go-http-client/1.1"
 
 	event := cefevent.CefEvent{
@@ -63,9 +63,9 @@ func main() {
 
 ```bash
 $ go run cef.go
-CEF:0|Cool Vendor|Cool Product|1.0|FLAKY_EVENT|Something flaky happened.|3|requestClientApplication=Go-http-client/1.1 sourceAddress=127.0.0.1
-2020/03/12 21:28:19 CEF:0|Cool Vendor|Cool Product|1.0|FLAKY_EVENT|Something flaky happened.|3|requestClientApplication=Go-http-client/1.1 sourceAddress=127.0.0.1
-2020/03/12 21:28:19 CEF:0|Cool Vendor|Cool Product|1.0|FLAKY_EVENT|Something flaky happened.|3|requestClientApplication=Go-http-client/1.1 sourceAddress=127.0.0.1
+CEF:0|Cool Vendor|Cool Product|1.0|FLAKY_EVENT|Something flaky happened.|3|requestClientApplication=Go-http-client/1.1 src=127.0.0.1
+2020/03/12 21:28:19 CEF:0|Cool Vendor|Cool Product|1.0|FLAKY_EVENT|Something flaky happened.|3|requestClientApplication=Go-http-client/1.1 src=127.0.0.1
+2020/03/12 21:28:19 CEF:0|Cool Vendor|Cool Product|1.0|FLAKY_EVENT|Something flaky happened.|3|requestClientApplication=Go-http-client/1.1 src=127.0.0.1
 ```
 
 ## Not yet implemented

@@ -17,7 +17,8 @@ type CefEventer interface {
 }
 
 type CefEvent struct {
-	Version            string
+	// defaults to 0 which is also the first CEF version.
+	Version            int
 	DeviceVendor       string
 	DeviceProduct      string
 	DeviceVersion      string
@@ -104,7 +105,6 @@ func (event CefEvent) Generate() (string, error) {
 		return "", errors.New("Not all mandatory CEF fields are set.")
 	}
 
-	event.Version = cefEscapeField(event.Version)
 	event.DeviceVendor = cefEscapeField(event.DeviceVendor)
 	event.DeviceProduct = cefEscapeField(event.DeviceProduct)
 	event.DeviceVersion = cefEscapeField(event.DeviceVersion)
