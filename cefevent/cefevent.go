@@ -15,7 +15,7 @@ type CefEventer interface {
 	Generate() (string, error)
 	Validate() bool
 	// TODO: implement read feature for just Parsed() events.
-	Read() (CefEvent, error)
+	//Read() (CefEvent, error)
 	Log() (bool, error)
 }
 
