@@ -11,13 +11,18 @@ import (
 	"strings"
 )
 
+// CefEventer defines the interface for handling Common Event Format (CEF) events.
+// It includes methods to generate, validate, read, and log CEF events.
 type CefEventer interface {
-	Generate() (string, error)
-	Validate() bool
-	Read(line string) (CefEvent, error)
-	Log() (bool, error)
+	Generate() (string, error)          // Generate constructs and returns a CEF message string if all the mandatory fields are set.
+	Validate() bool                     // Validate checks whether all mandatory fields in the CefEvent struct are set.
+	Read(line string) (CefEvent, error) // Read parses a CEF message string and populates the CefEvent struct with the extracted data.
+	Log() (bool, error)                 // Log attempts to generate a CEF message from the current CefEvent and logs it to the standard output.
 }
 
+// CefEvent represents a Common Event Format (CEF) event.
+// It includes fields for CEF version, device vendor, device product, device version,
+// device event class ID, event name, event severity, and additional extensions.
 type CefEvent struct {
 	// defaults to 0 which is also the first CEF version.
 	Version            int
