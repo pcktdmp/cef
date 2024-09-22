@@ -14,8 +14,7 @@ import (
 type CefEventer interface {
 	Generate() (string, error)
 	Validate() bool
-	// TODO: implement read feature for just Parsed() events.
-	//Read() (CefEvent, error)
+	Read(line string) (CefEvent, error)
 	Log() (bool, error)
 }
 
@@ -147,9 +146,9 @@ func (event CefEvent) Generate() (string, error) {
 	return eventCef, nil
 }
 
-func Parse(eventLine string) (CefEvent, error) {
-	if strings.HasPrefix(string(eventLine), "CEF:") {
-		eventSlashed := strings.Split(strings.TrimPrefix(string(eventLine), "CEF:"), "|")
+func (event CefEvent) Read(eventLine string) (CefEvent, error) {
+	if strings.HasPrefix(eventLine, "CEF:") {
+		eventSlashed := strings.Split(strings.TrimPrefix(eventLine, "CEF:"), "|")
 
 		// convert CEF version to int
 		cefVersion, err := strconv.Atoi(eventSlashed[0])
@@ -181,6 +180,11 @@ func Parse(eventLine string) (CefEvent, error) {
 			Severity:           eventSlashed[6],
 			Extensions:         parsedExtensions,
 		}
+
+		if !CefEventer.Validate(&eventParsed) {
+			return CefEvent{}, errors.New("not all mandatory CEF fields are set")
+		}
+
 		return eventParsed, nil
 	}
 	return CefEvent{}, errors.New("not a valid CEF message")

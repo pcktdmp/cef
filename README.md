@@ -57,9 +57,11 @@ func main() {
 	if err != nil {
 		fmt.Println("Need to handle this.")
 	}
-    // if you want parse a CEF event from a line
+	
+    // if you want read a CEF event from a line
     eventLine := "CEF:0|Cool Vendor|Cool Product|1.0|COOL_THING|Something cool happened.|Unknown|src=127.0.0.1"
-    eventFromLine := cefevent.Parse(eventLine)
+	newEvent := cefevent.CefEvent{}
+    newEvent.Read(eventLine)
 	
 }
 ```
