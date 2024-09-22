@@ -28,6 +28,7 @@ import (
 
 func main() {
 
+	// create CEF event
 	f := make(map[string]string)
 	f["src"] = "127.0.0.1"
 	f["requestClientApplication"] = "Go-http-client/1.1"
@@ -56,8 +57,13 @@ func main() {
 	if err != nil {
 		fmt.Println("Need to handle this.")
 	}
+	
+    // if you want read a CEF event from a line
+    eventLine := "CEF:0|Cool Vendor|Cool Product|1.0|COOL_THING|Something cool happened.|Unknown|src=127.0.0.1"
+    newEvent := cefevent.CefEvent{}
+    newEvent.Read(eventLine)
+	
 }
-
 ```
 ### Example output
 

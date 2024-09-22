@@ -7,12 +7,14 @@ import (
 	"os"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 )
 
 type CefEventer interface {
 	Generate() (string, error)
 	Validate() bool
+	Read(line string) (CefEvent, error)
 	Log() (bool, error)
 }
 
@@ -81,7 +83,7 @@ func (event *CefEvent) Validate() bool {
 
 // Log should be used as a stub in most cases, it either
 // succeeds generating the CEF event and send it to stdout
-// or doesnt and logs that to stderr. This function
+// or doesn't and logs that to stderr. This function
 // plays well inside containers.
 func (event *CefEvent) Log() (bool, error) {
 
@@ -89,7 +91,7 @@ func (event *CefEvent) Log() (bool, error) {
 
 	if err != nil {
 		log.SetOutput(os.Stderr)
-		errMsg := "Unable to generate and thereby log the CEF message."
+		errMsg := "unable to generate and thereby log the CEF message"
 		log.Println(errMsg)
 		return false, errors.New(errMsg)
 	}
@@ -102,7 +104,7 @@ func (event *CefEvent) Log() (bool, error) {
 func (event CefEvent) Generate() (string, error) {
 
 	if !CefEventer.Validate(&event) {
-		return "", errors.New("Not all mandatory CEF fields are set.")
+		return "", errors.New("not all mandatory CEF fields are set")
 	}
 
 	event.DeviceVendor = cefEscapeField(event.DeviceVendor)
@@ -142,4 +144,48 @@ func (event CefEvent) Generate() (string, error) {
 	)
 
 	return eventCef, nil
+}
+
+func (event CefEvent) Read(eventLine string) (CefEvent, error) {
+	if strings.HasPrefix(eventLine, "CEF:") {
+		eventSlashed := strings.Split(strings.TrimPrefix(eventLine, "CEF:"), "|")
+
+		// convert CEF version to int
+		cefVersion, err := strconv.Atoi(eventSlashed[0])
+		if err != nil {
+			return CefEvent{}, err
+		}
+
+		parsedExtensions := make(map[string]string)
+
+		// each extension k,v is separated by a " ".
+		// in the substring, "=" separator defines the kv pair of the extension
+		if len(eventSlashed) >= 7 {
+			extensions := strings.Split(eventSlashed[7], " ")
+			for _, ext := range extensions {
+				kv := strings.SplitN(ext, "=", 2)
+				if len(kv) == 2 {
+					parsedExtensions[kv[0]] = kv[1]
+				}
+			}
+		}
+
+		eventParsed := CefEvent{
+			Version:            cefVersion,
+			DeviceVendor:       eventSlashed[1],
+			DeviceProduct:      eventSlashed[2],
+			DeviceVersion:      eventSlashed[3],
+			DeviceEventClassId: eventSlashed[4],
+			Name:               eventSlashed[5],
+			Severity:           eventSlashed[6],
+			Extensions:         parsedExtensions,
+		}
+
+		if !CefEventer.Validate(&eventParsed) {
+			return CefEvent{}, errors.New("not all mandatory CEF fields are set")
+		}
+
+		return eventParsed, nil
+	}
+	return CefEvent{}, errors.New("not a valid CEF message")
 }

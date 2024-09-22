@@ -1,6 +1,7 @@
 package main
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/pcktdmp/cef/cefevent"
@@ -14,15 +15,14 @@ var event = cefevent.CefEvent{
 	DeviceEventClassId: "COOL_THING",
 	Name:               "Something cool happened.",
 	Severity:           "Unknown",
+	Extensions:         map[string]string{"src": "127.0.0.1"},
 }
+
+var eventLine = ("CEF:0|Cool Vendor|Cool Product|1.0|COOL_THING|Something cool happened.|Unknown|src=127.0.0.1")
 
 func TestCefEventExpected(t *testing.T) {
 
-	extLocal := make(map[string]string)
-	extLocal["src"] = "127.0.0.1"
-
 	expectedEvent := event
-	expectedEvent.Extensions = extLocal
 
 	want := "CEF:0|Cool Vendor|Cool Product|1.0|COOL_THING|Something cool happened.|Unknown|src=127.0.0.1"
 	got, _ := expectedEvent.Generate()
@@ -33,16 +33,50 @@ func TestCefEventExpected(t *testing.T) {
 
 }
 
+func TestCefEventParsed(t *testing.T) {
+
+	newEvent := cefevent.CefEvent{}
+	want := event
+	got, _ := newEvent.Read(eventLine)
+
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("Parse() = %v, want %v", got, want)
+	}
+}
+
+func TestCefEventParsedAndGenerated(t *testing.T) {
+
+	newEvent := cefevent.CefEvent{}
+	want := eventLine
+	parsedEvent, _ := newEvent.Read(eventLine)
+	got, _ := parsedEvent.Generate()
+
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("Parse() = %v, want %v", got, want)
+	}
+}
+
+func TestCefEventParsedFail(t *testing.T) {
+
+	newEvent := cefevent.CefEvent{}
+
+	got, err := newEvent.Read("This should definitely fail.")
+
+	if err == nil {
+		t.Errorf("Parse() = %v, want %v", err, got)
+	}
+}
+
 func TestCefEventEscape(t *testing.T) {
 
 	extLocal := make(map[string]string)
-	extLocal["src\\"] = "\n127.0.0.1="
+	extLocal["broken_src\\"] = "\n127.0.0.2="
 
 	borkyEvent := event
 	borkyEvent.DeviceVendor = "\\Cool\nVendor|"
 	borkyEvent.Extensions = extLocal
 
-	want := "CEF:0|\\\\Cool\\nVendor\\||Cool Product|1.0|COOL_THING|Something cool happened.|Unknown|src\\\\=\\n127.0.0.1\\="
+	want := "CEF:0|\\\\Cool\\nVendor\\||Cool Product|1.0|COOL_THING|Something cool happened.|Unknown|broken_src\\\\=\\n127.0.0.2\\="
 	got, _ := borkyEvent.Generate()
 
 	if want != got {
