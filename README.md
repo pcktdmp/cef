@@ -60,7 +60,7 @@ func main() {
 	
     // if you want read a CEF event from a line
     eventLine := "CEF:0|Cool Vendor|Cool Product|1.0|COOL_THING|Something cool happened.|Unknown|src=127.0.0.1"
-	newEvent := cefevent.CefEvent{}
+    newEvent := cefevent.CefEvent{}
     newEvent.Read(eventLine)
 	
 }
