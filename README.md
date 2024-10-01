@@ -6,9 +6,12 @@ Go Package for ArcSight's Common Event Format
 
 # Motivation
 
-Learning Go, help people who need to generate CEF events in Golang.
+Learning Go, help people who need to process CEF events in Golang.
 
 ## TL;DR
+
+`cefevent` is a [loose implementation](#Not-implemented) of the Common Event Format, the one who processes events
+needs to handle the [known](https://www.microfocus.com/documentation/arcsight/arcsight-smartconnectors-8.4/pdfdoc/cef-implementation-standard/cef-implementation-standard.pdf) field limits.
 
 ### Install the package
 
@@ -16,7 +19,7 @@ Learning Go, help people who need to generate CEF events in Golang.
 $ go get github.com/pcktdmp/cef/cefevent
 ```
 
-### cef.go
+### examples.go
 
 ```go
 package main
@@ -44,8 +47,7 @@ func main() {
 		Extensions:         f,
 	}
 
-	cef, _ := event.Generate()
-	fmt.Println(cef)
+	fmt.Println(event.String())
 
 	// send a CEF event as log message to stdout
 	event.Log()
@@ -57,23 +59,29 @@ func main() {
 	if err != nil {
 		fmt.Println("Need to handle this.")
 	}
-	
-    // if you want read a CEF event from a line
-    eventLine := "CEF:0|Cool Vendor|Cool Product|1.0|COOL_THING|Something cool happened.|Unknown|src=127.0.0.1"
-    newEvent := cefevent.CefEvent{}
-    newEvent.Read(eventLine)
-	
+
+	// if you want read a CEF event from a line
+	eventLine := "CEF:0|Cool Vendor|Cool Product|1.0|COOL_THING|Something cool happened.|Unknown|src=127.0.0.1"
+	newEvent := cefevent.CefEvent{}
+	newEvent.Read(eventLine)
+	eventString, err := newEvent.String()
+	if err != nil {
+		fmt.Println("Need to handle this.")
+	}
+	fmt.Println(eventString)
+
 }
+
 ```
 ### Example output
 
 ```bash
-$ go run cef.go
+$ go run examples.go
 CEF:0|Cool Vendor|Cool Product|1.0|FLAKY_EVENT|Something flaky happened.|3|requestClientApplication=Go-http-client/1.1 src=127.0.0.1
 2020/03/12 21:28:19 CEF:0|Cool Vendor|Cool Product|1.0|FLAKY_EVENT|Something flaky happened.|3|requestClientApplication=Go-http-client/1.1 src=127.0.0.1
 2020/03/12 21:28:19 CEF:0|Cool Vendor|Cool Product|1.0|FLAKY_EVENT|Something flaky happened.|3|requestClientApplication=Go-http-client/1.1 src=127.0.0.1
 ```
 
-## Not yet implemented
+## Not implemented
 
-* Field limits according to format standard for [known](https://community.microfocus.com/t5/ArcSight-Connectors/ArcSight-Common-Event-Format-CEF-Implementation-Standard/ta-p/1645557?attachment-id=68077) CEF fields
+* Field limits according to format standard for CEF fields
