@@ -1,13 +1,11 @@
-package main
+package cefevent
 
 import (
 	"reflect"
 	"testing"
-
-	"github.com/pcktdmp/cef/cefevent"
 )
 
-var event = cefevent.CefEvent{
+var event = CefEvent{
 	Version:            0,
 	DeviceVendor:       "Cool Vendor",
 	DeviceProduct:      "Cool Product",
@@ -18,24 +16,24 @@ var event = cefevent.CefEvent{
 	Extensions:         map[string]string{"src": "127.0.0.1"},
 }
 
-var eventLine = ("CEF:0|Cool Vendor|Cool Product|1.0|COOL_THING|Something cool happened.|Unknown|src=127.0.0.1")
+var eventLine = "CEF:0|Cool Vendor|Cool Product|1.0|COOL_THING|Something cool happened.|Unknown|src=127.0.0.1"
 
 func TestCefEventExpected(t *testing.T) {
 
 	expectedEvent := event
 
 	want := "CEF:0|Cool Vendor|Cool Product|1.0|COOL_THING|Something cool happened.|Unknown|src=127.0.0.1"
-	got, _ := expectedEvent.Generate()
+	got, _ := expectedEvent.String()
 
 	if want != got {
-		t.Errorf("event.Generate() = %q, want %q", got, want)
+		t.Errorf("event.String() = %q, want %q", got, want)
 	}
 
 }
 
 func TestCefEventParsed(t *testing.T) {
 
-	newEvent := cefevent.CefEvent{}
+	newEvent := CefEvent{}
 	want := event
 	got, _ := newEvent.Read(eventLine)
 
@@ -46,10 +44,10 @@ func TestCefEventParsed(t *testing.T) {
 
 func TestCefEventParsedAndGenerated(t *testing.T) {
 
-	newEvent := cefevent.CefEvent{}
+	newEvent := CefEvent{}
 	want := eventLine
 	parsedEvent, _ := newEvent.Read(eventLine)
-	got, _ := parsedEvent.Generate()
+	got, _ := parsedEvent.String()
 
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("Parse() = %v, want %v", got, want)
@@ -58,7 +56,7 @@ func TestCefEventParsedAndGenerated(t *testing.T) {
 
 func TestCefEventParsedFail(t *testing.T) {
 
-	newEvent := cefevent.CefEvent{}
+	newEvent := CefEvent{}
 
 	got, err := newEvent.Read("This should definitely fail.")
 
@@ -77,10 +75,10 @@ func TestCefEventEscape(t *testing.T) {
 	borkyEvent.Extensions = extLocal
 
 	want := "CEF:0|\\\\Cool\\nVendor\\||Cool Product|1.0|COOL_THING|Something cool happened.|Unknown|broken_src\\\\=\\n127.0.0.2\\="
-	got, _ := borkyEvent.Generate()
+	got, _ := borkyEvent.String()
 
 	if want != got {
-		t.Errorf("event.Generate() = %q, want %q", got, want)
+		t.Errorf("event.String() = %q, want %q", got, want)
 	}
 
 }
@@ -89,7 +87,7 @@ func TestCefEventMandatoryVersionField(t *testing.T) {
 
 	brokenEvent := event
 	brokenEvent.DeviceVendor = ""
-	_, err := brokenEvent.Generate()
+	_, err := brokenEvent.String()
 
 	if err == nil {
 		t.Errorf("%v", err)
@@ -100,7 +98,7 @@ func TestCefEventMandatoryDeviceVendorField(t *testing.T) {
 
 	brokenEvent := event
 	brokenEvent.DeviceVendor = ""
-	_, err := brokenEvent.Generate()
+	_, err := brokenEvent.String()
 
 	if err == nil {
 		t.Errorf("%v", err)
@@ -111,7 +109,7 @@ func TestCefEventMandatoryDeviceProductField(t *testing.T) {
 
 	brokenEvent := event
 	brokenEvent.DeviceProduct = ""
-	_, err := brokenEvent.Generate()
+	_, err := brokenEvent.String()
 
 	if err == nil {
 		t.Errorf("%v", err)
@@ -122,7 +120,7 @@ func TestCefEventMandatoryDeviceVersionField(t *testing.T) {
 
 	brokenEvent := event
 	brokenEvent.DeviceVersion = ""
-	_, err := brokenEvent.Generate()
+	_, err := brokenEvent.String()
 
 	if err == nil {
 		t.Errorf("%v", err)
@@ -133,7 +131,7 @@ func TestCefEventMandatoryDeviceEventClassIdField(t *testing.T) {
 
 	brokenEvent := event
 	brokenEvent.DeviceEventClassId = ""
-	_, err := brokenEvent.Generate()
+	_, err := brokenEvent.String()
 
 	if err == nil {
 		t.Errorf("%v", err)
@@ -144,7 +142,7 @@ func TestCefEventMandatoryNameField(t *testing.T) {
 
 	brokenEvent := event
 	brokenEvent.Name = ""
-	_, err := brokenEvent.Generate()
+	_, err := brokenEvent.String()
 
 	if err == nil {
 		t.Errorf("%v", err)
@@ -155,33 +153,33 @@ func TestCefEventMandatorySeverityField(t *testing.T) {
 
 	brokenEvent := event
 	brokenEvent.Severity = ""
-	_, err := brokenEvent.Generate()
+	_, err := brokenEvent.String()
 
 	if err == nil {
 		t.Errorf("%v", err)
 	}
 }
 
-func someImplementationOfCefEventer(e cefevent.CefEventer) bool {
+func someImplementationOfCefEventer(e CefEventer) error {
 	return e.Validate()
 }
 
 func TestCefEventerValidate(t *testing.T) {
 
-	if !someImplementationOfCefEventer(&event) {
+	if someImplementationOfCefEventer(&event) != nil {
 		t.Errorf("Validation should be succesful here.")
 	}
 
 	noDeviceVendor := event
 	noDeviceVendor.DeviceVendor = ""
-	if someImplementationOfCefEventer(&noDeviceVendor) {
+	if someImplementationOfCefEventer(&noDeviceVendor) == nil {
 		t.Errorf("Validation should fail here.")
 	}
 }
 
 func TestCefEventerLoggingSuccess(t *testing.T) {
 
-	_, err := event.Log()
+	err := event.Log()
 
 	if err != nil {
 		t.Errorf("%v", err)
@@ -192,9 +190,56 @@ func TestCefEventerLoggingFail(t *testing.T) {
 
 	brokenEvent := event
 	brokenEvent.DeviceVendor = ""
-	_, err := brokenEvent.Log()
+	err := brokenEvent.Log()
 
 	if err == nil {
 		t.Errorf("%v", err)
+	}
+}
+
+func TestCefEvent_ToJSON(t *testing.T) {
+	var tests = []struct {
+		cev      CefEvent
+		want     string
+		hasError bool
+	}{
+		{
+			cev: CefEvent{
+				Version:            1,
+				DeviceVendor:       "Test Vendor",
+				DeviceProduct:      "Test Product",
+				DeviceVersion:      "1.0.0",
+				DeviceEventClassId: "Test Class ID",
+				Name:               "Test Name",
+				Severity:           "Test Severity",
+				Extensions:         map[string]string{"Extension1": "Value1", "Extension2": "Value2"},
+			},
+			want:     `{"Version":1,"DeviceVendor":"Test Vendor","DeviceProduct":"Test Product","DeviceVersion":"1.0.0","DeviceEventClassId":"Test Class ID","Name":"Test Name","Severity":"Test Severity","Extensions":{"Extension1":"Value1","Extension2":"Value2"}}`,
+			hasError: false,
+		},
+		{
+			cev: CefEvent{
+				Version:            1,
+				DeviceVendor:       "",
+				DeviceProduct:      "Test Product",
+				DeviceVersion:      "1.0.0",
+				DeviceEventClassId: "Test Class ID",
+				Name:               "Test Name",
+				Severity:           "Test Severity",
+				Extensions:         map[string]string{"Extension1": "Value1", "Extension2": "Value2"},
+			},
+			want:     "",
+			hasError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		got, err := tt.cev.ToJSON()
+		if (err != nil) != tt.hasError {
+			t.Errorf("Expected error status: %v, got: %v", tt.hasError, err)
+		}
+		if got != tt.want {
+			t.Errorf("Expected json `%v`, but got `%v`", tt.want, got)
+		}
 	}
 }
