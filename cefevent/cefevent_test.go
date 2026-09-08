@@ -31,6 +31,32 @@ func TestCefEventExpected(t *testing.T) {
 
 }
 
+func TestCefEventBuild(t *testing.T) {
+
+	buildEvent := event
+
+	got, err := buildEvent.Build()
+	if err != nil {
+		t.Fatalf("Build() returned an unexpected error: %v", err)
+	}
+
+	want := event
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("Build() = %v, want %v", got, want)
+	}
+}
+
+func TestCefEventBuildMandatoryFieldMissing(t *testing.T) {
+
+	brokenEvent := event
+	brokenEvent.DeviceVendor = ""
+
+	got, err := brokenEvent.Build()
+	if err == nil {
+		t.Errorf("Build() = %v, want an error for a missing mandatory field", got)
+	}
+}
+
 func TestCefEventParsed(t *testing.T) {
 
 	newEvent := CefEvent{}
@@ -62,6 +88,54 @@ func TestCefEventParsedFail(t *testing.T) {
 
 	if err == nil {
 		t.Errorf("Parse() = %v, want %v", err, got)
+	}
+}
+
+func TestCefEventParsedNoExtensions(t *testing.T) {
+
+	newEvent := CefEvent{}
+
+	got, err := newEvent.Read("CEF:0|Cool Vendor|Cool Product|1.0|COOL_THING|Something cool happened.|Unknown")
+
+	if err != nil {
+		t.Errorf("Read() returned an unexpected error: %v", err)
+	}
+
+	if len(got.Extensions) != 0 {
+		t.Errorf("Read() Extensions = %v, want empty map", got.Extensions)
+	}
+}
+
+func TestCefEventParsedTooShort(t *testing.T) {
+
+	newEvent := CefEvent{}
+
+	got, err := newEvent.Read("CEF:0|Cool Vendor|Cool Product")
+
+	if err == nil {
+		t.Errorf("Read() = %v, want an error for a message missing mandatory fields", got)
+	}
+}
+
+func TestCefEventParsedInvalidVersion(t *testing.T) {
+
+	newEvent := CefEvent{}
+
+	got, err := newEvent.Read("CEF:notanumber|Cool Vendor|Cool Product|1.0|COOL_THING|Something cool happened.|Unknown")
+
+	if err == nil {
+		t.Errorf("Read() = %v, want an error for a non-numeric Version field", got)
+	}
+}
+
+func TestCefEventParsedEmptyMandatoryField(t *testing.T) {
+
+	newEvent := CefEvent{}
+
+	got, err := newEvent.Read("CEF:0||Cool Product|1.0|COOL_THING|Something cool happened.|Unknown")
+
+	if err == nil {
+		t.Errorf("Read() = %v, want an error for a message with an empty mandatory field (DeviceVendor)", got)
 	}
 }
 
@@ -241,5 +315,23 @@ func TestCefEvent_ToJSON(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("Expected json `%v`, but got `%v`", tt.want, got)
 		}
+	}
+}
+
+func TestCefEvent_ToJSONEscapesLikeString(t *testing.T) {
+
+	borkyEvent := event
+	borkyEvent.DeviceVendor = "\\Cool\nVendor|"
+	borkyEvent.Extensions = map[string]string{"broken_src\\": "\n127.0.0.2="}
+
+	got, err := borkyEvent.ToJSON()
+	if err != nil {
+		t.Fatalf("ToJSON() returned an unexpected error: %v", err)
+	}
+
+	want := `{"Version":0,"DeviceVendor":"\\\\Cool\\nVendor\\|","DeviceProduct":"Cool Product","DeviceVersion":"1.0","DeviceEventClassId":"COOL_THING","Name":"Something cool happened.","Severity":"Unknown","Extensions":{"broken_src\\\\":"\\n127.0.0.2\\="}}`
+
+	if got != want {
+		t.Errorf("ToJSON() = %q, want %q", got, want)
 	}
 }

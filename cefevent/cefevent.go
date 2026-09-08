@@ -277,6 +277,14 @@ func (event *CefEvent) Read(eventLine string) (CefEvent, error) {
 	if strings.HasPrefix(eventLine, "CEF:") {
 		eventSlashed := strings.Split(strings.TrimPrefix(eventLine, "CEF:"), "|")
 
+		// there must be at least the 7 mandatory header fields
+		// (Version, DeviceVendor, DeviceProduct, DeviceVersion,
+		// DeviceEventClassId, Name, Severity) before we can safely
+		// index into eventSlashed below.
+		if len(eventSlashed) < 7 {
+			return CefEvent{}, errors.New("not a valid CEF message")
+		}
+
 		// convert CEF version to int
 		cefVersion, err := strconv.Atoi(eventSlashed[0])
 		if err != nil {
@@ -288,7 +296,7 @@ func (event *CefEvent) Read(eventLine string) (CefEvent, error) {
 
 		// each extension k,v is separated by a " ".
 		// in the substring, "=" separator defines the kv pair of the extension
-		if len(eventSlashed) >= 7 {
+		if len(eventSlashed) >= 8 {
 			extensions := strings.Split(eventSlashed[7], " ")
 			for _, ext := range extensions {
 				kv := strings.SplitN(ext, "=", 2)
@@ -322,15 +330,20 @@ func (event *CefEvent) Read(eventLine string) (CefEvent, error) {
 // ToJSON converts the CefEvent instance to a JSON string.
 //
 // This method first validates the CefEvent to ensure all mandatory fields are set,
-// and then attempts to marshal the event into a JSON formatted string.
+// escapes the event data the same way String()/Build()/Read() do, and then attempts
+// to marshal the event into a JSON formatted string.
 //
 // Returns:
 // - A JSON string representation of the CefEvent if successful.
 // - An error if the CefEvent is not valid or if there is an error during the JSON marshaling process.
 func (event *CefEvent) ToJSON() (string, error) {
-	// Validate the event before converting to JSON
-	if err := event.Validate(); err != nil {
-		return "", err
+
+	if CefEventer.Validate(event) != nil {
+		return "", errors.New("not all mandatory CEF fields are set")
+	}
+
+	if event.escapeEventData() != nil {
+		return "", errors.New("unable to escape CEF event data")
 	}
 
 	// Attempt to convert the event to JSON
