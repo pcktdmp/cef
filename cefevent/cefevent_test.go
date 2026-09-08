@@ -269,3 +269,21 @@ func TestCefEvent_ToJSON(t *testing.T) {
 		}
 	}
 }
+
+func TestCefEvent_ToJSONEscapesLikeString(t *testing.T) {
+
+	borkyEvent := event
+	borkyEvent.DeviceVendor = "\\Cool\nVendor|"
+	borkyEvent.Extensions = map[string]string{"broken_src\\": "\n127.0.0.2="}
+
+	got, err := borkyEvent.ToJSON()
+	if err != nil {
+		t.Fatalf("ToJSON() returned an unexpected error: %v", err)
+	}
+
+	want := `{"Version":0,"DeviceVendor":"\\\\Cool\\nVendor\\|","DeviceProduct":"Cool Product","DeviceVersion":"1.0","DeviceEventClassId":"COOL_THING","Name":"Something cool happened.","Severity":"Unknown","Extensions":{"broken_src\\\\":"\\n127.0.0.2\\="}}`
+
+	if got != want {
+		t.Errorf("ToJSON() = %q, want %q", got, want)
+	}
+}

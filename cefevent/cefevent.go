@@ -330,15 +330,20 @@ func (event *CefEvent) Read(eventLine string) (CefEvent, error) {
 // ToJSON converts the CefEvent instance to a JSON string.
 //
 // This method first validates the CefEvent to ensure all mandatory fields are set,
-// and then attempts to marshal the event into a JSON formatted string.
+// escapes the event data the same way String()/Build()/Read() do, and then attempts
+// to marshal the event into a JSON formatted string.
 //
 // Returns:
 // - A JSON string representation of the CefEvent if successful.
 // - An error if the CefEvent is not valid or if there is an error during the JSON marshaling process.
 func (event *CefEvent) ToJSON() (string, error) {
-	// Validate the event before converting to JSON
-	if err := event.Validate(); err != nil {
-		return "", err
+
+	if CefEventer.Validate(event) != nil {
+		return "", errors.New("not all mandatory CEF fields are set")
+	}
+
+	if event.escapeEventData() != nil {
+		return "", errors.New("unable to escape CEF event data")
 	}
 
 	// Attempt to convert the event to JSON
