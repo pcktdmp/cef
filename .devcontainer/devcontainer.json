@@ -1,0 +1,33 @@
+{
+	"name": "cef (Go)",
+	"image": "mcr.microsoft.com/devcontainers/go:1-1.22-bookworm",
+
+	"features": {
+		"ghcr.io/devcontainers/features/git:1": {},
+		"ghcr.io/devcontainers/features/node:1": {
+			"version": "lts"
+		}
+	},
+
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"golang.go"
+			],
+			"settings": {
+				"go.toolsManagement.autoUpdate": true,
+				"go.useLanguageServer": true,
+				"go.lintTool": "golangci-lint",
+				"go.formatTool": "goimports"
+			}
+		}
+	},
+
+	"containerEnv": {
+		"GOTOOLCHAIN": "auto"
+	},
+
+	"postCreateCommand": "go mod download && go install golang.org/x/tools/gopls@latest && go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest && npm install -g @anthropic-ai/claude-code",
+
+	"remoteUser": "vscode"
+}
