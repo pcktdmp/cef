@@ -1,7 +1,7 @@
 # CEF field-length reference
 
 This file is a cached, condensed reference for the CEF field-length limits
-implemented in `limits.go` (`HeaderFieldLimits`, `ExtensionFieldLimits`).
+implemented in `cefevent/limits.go` (`HeaderFieldLimits`, `ExtensionFieldLimits`).
 It exists so that changes to those tables can be checked against the spec
 without re-fetching and re-parsing the source PDF every time.
 
@@ -22,7 +22,7 @@ length, prefer the newer document.
 
 If Micro Focus/OpenText republish this document at a different URL or
 version, re-fetch it, diff the two tables below against the new content,
-and update `limits.go` (plus this file) together in the same change.
+and update `cefevent/limits.go` (plus this file) together in the same change.
 
 ## Header fields
 
@@ -114,6 +114,6 @@ extension keys, which aren't part of the predefined dictionary at all.
 | `dproc` | 1023 | | | |
 | `dtz` | 255 | | | |
 
-This table is kept in sync with `ExtensionFieldLimits` in `limits.go` — the
+This table is kept in sync with `ExtensionFieldLimits` in `cefevent/limits.go` — the
 map there is the source of truth for code; this file exists for humans
 (and Claude) to check against the spec without re-fetching the PDF.
