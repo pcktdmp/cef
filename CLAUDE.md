@@ -22,7 +22,7 @@ that check a `CefEvent`'s fields against them. These are **not** part of the
 `CefEventer` interface and are never called by `String`/`Build`/`Read`/`Validate` —
 adding them there would make the "loose by default" behavior above a lie.
 
-**`cefevent/CEF-SPEC.md` is the cached source of truth for both tables.** It documents
+**`CEF-SPEC.md` (repo root) is the cached source of truth for both tables.** It documents
 which spec document and URL the numbers came from (the CEF spec has multiple published
 versions with materially different content — see the note below) and is meant to be
 checked before changing either table, without needing to re-fetch and re-parse the PDF
