@@ -31,6 +31,32 @@ func TestCefEventExpected(t *testing.T) {
 
 }
 
+func TestCefEventBuild(t *testing.T) {
+
+	buildEvent := event
+
+	got, err := buildEvent.Build()
+	if err != nil {
+		t.Fatalf("Build() returned an unexpected error: %v", err)
+	}
+
+	want := event
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("Build() = %v, want %v", got, want)
+	}
+}
+
+func TestCefEventBuildMandatoryFieldMissing(t *testing.T) {
+
+	brokenEvent := event
+	brokenEvent.DeviceVendor = ""
+
+	got, err := brokenEvent.Build()
+	if err == nil {
+		t.Errorf("Build() = %v, want an error for a missing mandatory field", got)
+	}
+}
+
 func TestCefEventParsed(t *testing.T) {
 
 	newEvent := CefEvent{}
@@ -88,6 +114,28 @@ func TestCefEventParsedTooShort(t *testing.T) {
 
 	if err == nil {
 		t.Errorf("Read() = %v, want an error for a message missing mandatory fields", got)
+	}
+}
+
+func TestCefEventParsedInvalidVersion(t *testing.T) {
+
+	newEvent := CefEvent{}
+
+	got, err := newEvent.Read("CEF:notanumber|Cool Vendor|Cool Product|1.0|COOL_THING|Something cool happened.|Unknown")
+
+	if err == nil {
+		t.Errorf("Read() = %v, want an error for a non-numeric Version field", got)
+	}
+}
+
+func TestCefEventParsedEmptyMandatoryField(t *testing.T) {
+
+	newEvent := CefEvent{}
+
+	got, err := newEvent.Read("CEF:0||Cool Product|1.0|COOL_THING|Something cool happened.|Unknown")
+
+	if err == nil {
+		t.Errorf("Read() = %v, want an error for a message with an empty mandatory field (DeviceVendor)", got)
 	}
 }
 
