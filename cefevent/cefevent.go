@@ -277,6 +277,14 @@ func (event *CefEvent) Read(eventLine string) (CefEvent, error) {
 	if strings.HasPrefix(eventLine, "CEF:") {
 		eventSlashed := strings.Split(strings.TrimPrefix(eventLine, "CEF:"), "|")
 
+		// there must be at least the 7 mandatory header fields
+		// (Version, DeviceVendor, DeviceProduct, DeviceVersion,
+		// DeviceEventClassId, Name, Severity) before we can safely
+		// index into eventSlashed below.
+		if len(eventSlashed) < 7 {
+			return CefEvent{}, errors.New("not a valid CEF message")
+		}
+
 		// convert CEF version to int
 		cefVersion, err := strconv.Atoi(eventSlashed[0])
 		if err != nil {
@@ -288,7 +296,7 @@ func (event *CefEvent) Read(eventLine string) (CefEvent, error) {
 
 		// each extension k,v is separated by a " ".
 		// in the substring, "=" separator defines the kv pair of the extension
-		if len(eventSlashed) >= 7 {
+		if len(eventSlashed) >= 8 {
 			extensions := strings.Split(eventSlashed[7], " ")
 			for _, ext := range extensions {
 				kv := strings.SplitN(ext, "=", 2)

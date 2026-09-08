@@ -65,6 +65,32 @@ func TestCefEventParsedFail(t *testing.T) {
 	}
 }
 
+func TestCefEventParsedNoExtensions(t *testing.T) {
+
+	newEvent := CefEvent{}
+
+	got, err := newEvent.Read("CEF:0|Cool Vendor|Cool Product|1.0|COOL_THING|Something cool happened.|Unknown")
+
+	if err != nil {
+		t.Errorf("Read() returned an unexpected error: %v", err)
+	}
+
+	if len(got.Extensions) != 0 {
+		t.Errorf("Read() Extensions = %v, want empty map", got.Extensions)
+	}
+}
+
+func TestCefEventParsedTooShort(t *testing.T) {
+
+	newEvent := CefEvent{}
+
+	got, err := newEvent.Read("CEF:0|Cool Vendor|Cool Product")
+
+	if err == nil {
+		t.Errorf("Read() = %v, want an error for a message missing mandatory fields", got)
+	}
+}
+
 func TestCefEventEscape(t *testing.T) {
 
 	extLocal := make(map[string]string)
