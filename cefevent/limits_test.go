@@ -1,8 +1,10 @@
 package cefevent
 
-import "strings"
-
-import "testing"
+import (
+	"reflect"
+	"strings"
+	"testing"
+)
 
 func TestExtensionFieldLimitsKnownValues(t *testing.T) {
 
@@ -201,5 +203,106 @@ func TestValidateExtensionLengthsCountsRunesNotBytes(t *testing.T) {
 
 	if err := e.ValidateExtensionLengths(); err == nil {
 		t.Errorf("ValidateExtensionLengths() = nil, want an error for 32 runes exceeding the 31-character limit")
+	}
+}
+
+func TestTruncateToLimitsWithinLimitsIsNoOp(t *testing.T) {
+
+	e := event
+	e.Extensions = map[string]string{"act": "block"}
+
+	truncated := e.TruncateToLimits()
+
+	if truncated != nil {
+		t.Errorf("TruncateToLimits() = %v, want nil (nothing exceeds its limit)", truncated)
+	}
+	if e.DeviceVendor != "Cool Vendor" || e.Extensions["act"] != "block" {
+		t.Errorf("TruncateToLimits() modified values that were within limits: %+v", e)
+	}
+}
+
+func TestTruncateToLimitsHeaderField(t *testing.T) {
+
+	e := event
+	e.DeviceVendor = strings.Repeat("v", 64) // limit is 63
+
+	truncated := e.TruncateToLimits()
+
+	want := []string{"DeviceVendor"}
+	if !reflect.DeepEqual(truncated, want) {
+		t.Errorf("TruncateToLimits() = %v, want %v", truncated, want)
+	}
+	if e.DeviceVendor != strings.Repeat("v", 63) {
+		t.Errorf("DeviceVendor = %q (length %d), want length 63", e.DeviceVendor, len(e.DeviceVendor))
+	}
+}
+
+func TestTruncateToLimitsExtensionField(t *testing.T) {
+
+	e := event
+	e.Extensions = map[string]string{"act": strings.Repeat("a", 64)} // limit is 63
+
+	truncated := e.TruncateToLimits()
+
+	want := []string{"act"}
+	if !reflect.DeepEqual(truncated, want) {
+		t.Errorf("TruncateToLimits() = %v, want %v", truncated, want)
+	}
+	if e.Extensions["act"] != strings.Repeat("a", 63) {
+		t.Errorf("Extensions[\"act\"] = %q (length %d), want length 63", e.Extensions["act"], len(e.Extensions["act"]))
+	}
+}
+
+func TestTruncateToLimitsIgnoresUnknownExtensionKeys(t *testing.T) {
+
+	e := event
+	e.Extensions = map[string]string{"myCustomKey": strings.Repeat("x", 10000)}
+
+	truncated := e.TruncateToLimits()
+
+	if truncated != nil {
+		t.Errorf("TruncateToLimits() = %v, want nil: myCustomKey isn't in ExtensionFieldLimits", truncated)
+	}
+	if e.Extensions["myCustomKey"] != strings.Repeat("x", 10000) {
+		t.Errorf("TruncateToLimits() modified an extension key it has no documented limit for")
+	}
+}
+
+func TestTruncateToLimitsCountsRunesNotBytes(t *testing.T) {
+
+	e := event
+	// "app" has a documented limit of 31 characters; use a multi-byte rune so
+	// a byte-based truncation would produce a different (and possibly
+	// invalid-UTF-8) result than a rune-based one.
+	e.Extensions = map[string]string{"app": strings.Repeat("é", 32)}
+
+	truncated := e.TruncateToLimits()
+
+	want := []string{"app"}
+	if !reflect.DeepEqual(truncated, want) {
+		t.Errorf("TruncateToLimits() = %v, want %v", truncated, want)
+	}
+
+	wantValue := strings.Repeat("é", 31)
+	if e.Extensions["app"] != wantValue {
+		t.Errorf("Extensions[\"app\"] = %q, want %q (31 runes, not 31 bytes)", e.Extensions["app"], wantValue)
+	}
+}
+
+func TestTruncateToLimitsMultipleFields(t *testing.T) {
+
+	e := event
+	e.DeviceVendor = strings.Repeat("v", 64)
+	e.DeviceProduct = strings.Repeat("p", 64)
+	e.Extensions = map[string]string{
+		"act": strings.Repeat("a", 64),
+		"app": strings.Repeat("p", 32),
+	}
+
+	truncated := e.TruncateToLimits()
+
+	want := []string{"DeviceVendor", "DeviceProduct", "act", "app"}
+	if !reflect.DeepEqual(truncated, want) {
+		t.Errorf("TruncateToLimits() = %v, want %v (header fields in struct order, then extension keys sorted)", truncated, want)
 	}
 }

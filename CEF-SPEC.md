@@ -1,8 +1,9 @@
-# CEF field-length reference
+# CEF field reference
 
-This file is a cached, condensed reference for the CEF field-length limits
-implemented in `cefevent/limits.go` (`HeaderFieldLimits`, `ExtensionFieldLimits`).
-It exists so that changes to those tables can be checked against the spec
+This file is a cached, condensed reference for the CEF field limits and data
+types implemented in `cefevent/limits.go` (`HeaderFieldLimits`,
+`ExtensionFieldLimits`) and `cefevent/types.go` (`ExtensionFieldTypes`). It
+exists so that changes to those tables can be checked against the spec
 without re-fetching and re-parsing the source PDF every time.
 
 **Source:** *Implementing ArcSight Common Event Format (CEF)* — Version 26
@@ -117,3 +118,49 @@ extension keys, which aren't part of the predefined dictionary at all.
 This table is kept in sync with `ExtensionFieldLimits` in `cefevent/limits.go` — the
 map there is the source of truth for code; this file exists for humans
 (and Claude) to check against the spec without re-fetching the PDF.
+
+## Extension Dictionary (non-string data types)
+
+Every Extension Dictionary key also has a "Data Type" column in the spec beyond
+`String` — Integer, Long, Floating Point, Double, IP Address, MAC Address, or Time
+Stamp. `ExtensionFieldTypes` in `cefevent/types.go` encodes a **curated subset** of
+these: only the keys below, each individually confirmed against the spec's own Data
+Type column (not bulk-transcribed the way the length tables above were, since the
+source PDF's line-wrapped rows made bulk extraction unreliable for this — see the
+`git log` for `types.go` if you want the extraction notes). A key not listed here
+simply isn't checked by `ValidateExtensionTypes`; that's not a claim that it has no
+non-string type, just that it hasn't been individually verified yet.
+
+| CEF key | Data Type | | CEF key | Data Type |
+|---|---|---|---|---|
+| `agt` | IP Address | | `dvcpid` | Integer |
+| `amac` | MAC Address | | `end` | Time Stamp |
+| `art` | Time Stamp | | `eventId` | Long |
+| `cfp1`-`cfp4` | Floating Point | | `fsize` | Integer |
+| `cn1`-`cn3` | Long | | `in` | Integer |
+| `cnt` | Integer | | `oldFileSize` | Integer |
+| `deviceDirection` | Integer | | `out` | Integer |
+| `dlat`, `dlong` | Double | | `rt` | Time Stamp |
+| `dmac` | MAC Address | | `slat`, `slong` | Double |
+| `dpid` | Integer | | `smac` | MAC Address |
+| `dpt` | Integer | | `spid` | Integer |
+| `dst` | IP Address | | `spt` | Integer |
+| `dvc` | IP Address | | `src` | IP Address |
+| `dvcmac` | MAC Address | | `start` | Time Stamp |
+| | | | `type` | Integer |
+
+`dvcmac` is a known extraction quirk: the Version 26 PDF's table renders this row's
+key column as `dmac` a second time (right where `dvcmac` belongs alphabetically,
+between `dvc` and `dvcpid`), almost certainly a PDF kerning/font artifact rather than
+the field actually being absent — the older v25 document and Microsoft's
+[CEF-to-CommonSecurityLog mapping reference](https://learn.microsoft.com/en-us/azure/sentinel/cef-name-mapping)
+both independently confirm `dvcmac` → `deviceMacAddress` → MAC Address.
+
+`IP Address` fields accept both IPv4 and IPv6 in `ValidateExtensionTypes`
+(`net.ParseIP`): the spec notes CEF 0.1 held IPv4 only in these fields, but CEF 1.0
+onward allows IPv6 too, and rejecting valid IPv6 on the assumption a message is 0.1
+would be over-strict.
+
+`Time Stamp` fields accept the spec's documented `MMM dd yyyy HH:mm:ss` format (both
+zero-padded and non-zero-padded day) or milliseconds-since-epoch — not the full list
+of date formats the spec's later chapters describe elsewhere, just this one.
