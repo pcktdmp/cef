@@ -277,3 +277,78 @@ func (event *CefEvent) ValidateFieldLengths() error {
 
 	return nil
 }
+
+// TruncateToLimits truncates any header or extension field that exceeds its
+// documented CEF spec maximum length (see HeaderFieldLimits and
+// ExtensionFieldLimits) down to that limit, mutating event in place. It's the
+// best-effort counterpart to ValidateHeaderLengths/ValidateExtensionLengths:
+// those reject an over-length event outright, this repairs it so a producer
+// can still emit *a* valid-length event rather than dropping it.
+//
+// Like the validators, this operates on raw (not yet escaped) field values —
+// call it before String()/Build(), the same point you'd call
+// ValidateHeaderLengths/ValidateExtensionLengths. Truncating post-escaping
+// would count the extra bytes escaping adds toward the limit, which isn't
+// what the spec's length limits describe.
+//
+// Truncation is by Unicode character (rune), not byte, so it never splits a
+// multi-byte character. Header field names in the result use the CefEvent
+// struct field name (e.g. "DeviceVendor"); extension field names use the CEF
+// key (e.g. "act"). Version and Severity are never touched — like
+// ValidateHeaderLengths, this only knows about the 5 header fields with a
+// documented length, and unrecognized extension keys are left alone.
+//
+// Returns the names of every field it actually shortened, in a stable order
+// (header fields first in struct order, then extension keys sorted), or nil
+// if nothing needed truncating.
+func (event *CefEvent) TruncateToLimits() []string {
+
+	var truncated []string
+
+	headerFields := []struct {
+		name  string
+		value *string
+	}{
+		{"DeviceVendor", &event.DeviceVendor},
+		{"DeviceProduct", &event.DeviceProduct},
+		{"DeviceVersion", &event.DeviceVersion},
+		{"DeviceEventClassId", &event.DeviceEventClassId},
+		{"Name", &event.Name},
+	}
+
+	for _, field := range headerFields {
+		if truncateToRuneLimit(field.value, HeaderFieldLimits[field.name]) {
+			truncated = append(truncated, field.name)
+		}
+	}
+
+	keys := make([]string, 0, len(event.Extensions))
+	for k := range event.Extensions {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		limit, ok := ExtensionFieldLimits[k]
+		if !ok {
+			continue
+		}
+		value := event.Extensions[k]
+		if truncateToRuneLimit(&value, limit) {
+			event.Extensions[k] = value
+			truncated = append(truncated, k)
+		}
+	}
+
+	return truncated
+}
+
+// truncateToRuneLimit shortens *s to at most limit runes (Unicode code
+// points), in place, and reports whether it changed anything.
+func truncateToRuneLimit(s *string, limit int) bool {
+	if utf8.RuneCountInString(*s) <= limit {
+		return false
+	}
+	*s = string([]rune(*s)[:limit])
+	return true
+}
