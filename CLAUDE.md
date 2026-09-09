@@ -128,13 +128,14 @@ Data flow, both directions go through the same escaping step:
   now requires `len(eventSlashed) >= 7` before touching indices `1`-`6` and `>= 8`
   before touching `[7]`, returning an error instead of panicking on malformed input.
 
-`String()`/`Build()`/`ToJSON()` have pointer receivers and mutate the receiver in
-place via `escapeEventData()` — calling `event.String()` doesn't just read `event`, it
-overwrites `event.DeviceVendor`/etc. with their escaped form as a side effect. Calling
-`String()` (or `Build`/`ToJSON`) a second time on the same event re-escapes
-already-escaped data. Tests that need the pre-escape values after calling one of these
-(e.g. a round-trip test comparing against the original) must snapshot them first —
-see `TestCefEventReadUnescapesLikeStringEscapes` in `cefevent_test.go` for the pattern.
+`String()`/`Build()`/`ToJSON()` used to mutate the receiver in place via
+`escapeEventData()` — calling `event.String()` didn't just read `event`, it overwrote
+`event.DeviceVendor`/etc. with their escaped form as a side effect, so calling
+`String()` (or `Build`/`ToJSON`) a second time on the same event re-escaped
+already-escaped data. That's fixed: all three now call `escapeEventData()` on a local
+`escaped := *event` copy and build their output from that, leaving the receiver
+untouched — see `TestStringBuildToJSONDoNotMutateReceiver` and
+`Test{String,Build}CalledTwiceDoesNotDoubleEscape` in `cefevent_test.go`.
 
 `Validate()` uses reflection (`reflect.ValueOf(event).Elem().FieldByName(...)`) over a
 hardcoded list of mandatory field names rather than checking struct fields directly —

@@ -343,6 +343,10 @@ func (event *CefEvent) Log() error {
 
 // Build constructs and returns a CEF (Common Event Format) message just as String() but then as CefEvent type.
 //
+// Build does not modify the receiver: escaping is applied to a local copy, and that
+// escaped copy is what's returned. Calling Build (or String, or ToJSON) more than once
+// on the same *CefEvent therefore can't accumulate escaping the way it used to.
+//
 // Returns:
 // - A CefEvent type representing the CEF message.
 // - An error if any mandatory field is missing or if there are other issues during generation.
@@ -352,11 +356,12 @@ func (event *CefEvent) Build() (CefEvent, error) {
 		return CefEvent{}, errors.New("not all mandatory CEF fields are set")
 	}
 
-	if event.escapeEventData() != nil {
+	escaped := *event
+	if escaped.escapeEventData() != nil {
 		return CefEvent{}, errors.New("unable to escape CEF event data")
 	}
 
-	return *event, nil
+	return escaped, nil
 }
 
 // String constructs and returns a CEF (Common Event Format) message string if all the mandatory
@@ -367,6 +372,10 @@ func (event *CefEvent) Build() (CefEvent, error) {
 //
 // Each field is escaped to ensure that special characters do not interfere with the CEF format.
 //
+// String does not modify the receiver: escaping is applied to a local copy, so calling
+// String (or Build, or ToJSON) more than once on the same *CefEvent can't accumulate
+// escaping the way it used to.
+//
 // Returns:
 // - A string representing the CEF message.
 // - An error if any mandatory field is missing or if there are other issues during generation.
@@ -376,14 +385,15 @@ func (event *CefEvent) String() (string, error) {
 		return "", errors.New("not all mandatory CEF fields are set")
 	}
 
-	if event.escapeEventData() != nil {
+	escaped := *event
+	if escaped.escapeEventData() != nil {
 		return "", errors.New("unable to escape CEF event data")
 	}
 
 	var p strings.Builder
 
 	var sortedExtensions []string
-	for k := range event.Extensions {
+	for k := range escaped.Extensions {
 		sortedExtensions = append(sortedExtensions, k)
 	}
 	sort.Strings(sortedExtensions)
@@ -393,7 +403,7 @@ func (event *CefEvent) String() (string, error) {
 		p.WriteString(fmt.Sprintf(
 			"%s=%s ",
 			k,
-			event.Extensions[k]),
+			escaped.Extensions[k]),
 		)
 	}
 
@@ -403,10 +413,10 @@ func (event *CefEvent) String() (string, error) {
 
 	eventCef := fmt.Sprintf(
 		"CEF:%v|%v|%v|%v|%v|%v|%v|%v",
-		event.Version, event.DeviceVendor,
-		event.DeviceProduct, event.DeviceVersion,
-		event.DeviceEventClassId, event.Name,
-		event.Severity, extensionString,
+		escaped.Version, escaped.DeviceVendor,
+		escaped.DeviceProduct, escaped.DeviceVersion,
+		escaped.DeviceEventClassId, escaped.Name,
+		escaped.Severity, extensionString,
 	)
 
 	return eventCef, nil
@@ -491,6 +501,10 @@ func (event *CefEvent) Read(eventLine string) (CefEvent, error) {
 // escapes the event data the same way String()/Build()/Read() do, and then attempts
 // to marshal the event into a JSON formatted string.
 //
+// ToJSON does not modify the receiver: escaping is applied to a local copy, and that
+// escaped copy is what's marshaled. Calling ToJSON (or String, or Build) more than
+// once on the same *CefEvent therefore can't accumulate escaping the way it used to.
+//
 // Returns:
 // - A JSON string representation of the CefEvent if successful.
 // - An error if the CefEvent is not valid or if there is an error during the JSON marshaling process.
@@ -500,12 +514,13 @@ func (event *CefEvent) ToJSON() (string, error) {
 		return "", errors.New("not all mandatory CEF fields are set")
 	}
 
-	if event.escapeEventData() != nil {
+	escaped := *event
+	if escaped.escapeEventData() != nil {
 		return "", errors.New("unable to escape CEF event data")
 	}
 
 	// Attempt to convert the event to JSON
-	jsonData, err := json.Marshal(event)
+	jsonData, err := json.Marshal(escaped)
 	if err != nil {
 		return "", err
 	}

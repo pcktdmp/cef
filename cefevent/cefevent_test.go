@@ -148,11 +148,10 @@ func TestCefEventReadUnescapesLikeStringEscapes(t *testing.T) {
 	original.DeviceVendor = "\\Cool\nVendor|"
 	original.Extensions = map[string]string{"cs1": "a\\b\nc=d"}
 
-	// String() has a pointer receiver and mutates the receiver in place
-	// (escapeEventData escapes event.DeviceVendor/.../.Extensions), so snapshot
-	// the pre-escape, raw values we expect Read to reconstruct before calling it.
+	// String() no longer mutates its receiver (see
+	// TestStringBuildToJSONDoNotMutateReceiver), so original is still the raw,
+	// pre-escape value after this call and can be compared against directly.
 	want := original
-	want.Extensions = map[string]string{"cs1": "a\\b\nc=d"}
 
 	wire, err := original.String()
 	if err != nil {
@@ -254,6 +253,82 @@ func TestCefEventEscape(t *testing.T) {
 		t.Errorf("event.String() = %q, want %q", got, want)
 	}
 
+}
+
+func TestStringBuildToJSONDoNotMutateReceiver(t *testing.T) {
+
+	original := event
+	original.DeviceVendor = "\\Cool\nVendor|"
+	original.Extensions = map[string]string{"cs1": "a\\b\nc=d"}
+
+	snapshot := original
+	snapshot.Extensions = map[string]string{"cs1": "a\\b\nc=d"}
+
+	e := original
+	if _, err := e.String(); err != nil {
+		t.Fatalf("String() returned an unexpected error: %v", err)
+	}
+	if !reflect.DeepEqual(e, snapshot) {
+		t.Errorf("String() mutated its receiver: got %+v, want unchanged %+v", e, snapshot)
+	}
+
+	e = original
+	if _, err := e.Build(); err != nil {
+		t.Fatalf("Build() returned an unexpected error: %v", err)
+	}
+	if !reflect.DeepEqual(e, snapshot) {
+		t.Errorf("Build() mutated its receiver: got %+v, want unchanged %+v", e, snapshot)
+	}
+
+	e = original
+	if _, err := e.ToJSON(); err != nil {
+		t.Fatalf("ToJSON() returned an unexpected error: %v", err)
+	}
+	if !reflect.DeepEqual(e, snapshot) {
+		t.Errorf("ToJSON() mutated its receiver: got %+v, want unchanged %+v", e, snapshot)
+	}
+}
+
+func TestStringCalledTwiceDoesNotDoubleEscape(t *testing.T) {
+
+	e := event
+	e.DeviceVendor = "\\Cool\nVendor|"
+	e.Extensions = map[string]string{"cs1": "a\\b\nc=d"}
+
+	first, err := e.String()
+	if err != nil {
+		t.Fatalf("String() returned an unexpected error: %v", err)
+	}
+
+	second, err := e.String()
+	if err != nil {
+		t.Fatalf("String() (second call) returned an unexpected error: %v", err)
+	}
+
+	if first != second {
+		t.Errorf("String() called twice produced different output: first=%q second=%q (should be identical - escaping should not accumulate)", first, second)
+	}
+}
+
+func TestBuildCalledTwiceDoesNotDoubleEscape(t *testing.T) {
+
+	e := event
+	e.DeviceVendor = "\\Cool\nVendor|"
+	e.Extensions = map[string]string{"cs1": "a\\b\nc=d"}
+
+	first, err := e.Build()
+	if err != nil {
+		t.Fatalf("Build() returned an unexpected error: %v", err)
+	}
+
+	second, err := e.Build()
+	if err != nil {
+		t.Fatalf("Build() (second call) returned an unexpected error: %v", err)
+	}
+
+	if !reflect.DeepEqual(first, second) {
+		t.Errorf("Build() called twice produced different output: first=%+v second=%+v (should be identical - escaping should not accumulate)", first, second)
+	}
 }
 
 func TestCefEventMandatoryVersionField(t *testing.T) {
