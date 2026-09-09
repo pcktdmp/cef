@@ -1,6 +1,7 @@
 package cefevent
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 )
@@ -331,80 +332,83 @@ func TestBuildCalledTwiceDoesNotDoubleEscape(t *testing.T) {
 	}
 }
 
-func TestCefEventMandatoryVersionField(t *testing.T) {
+func TestCefEventMandatoryStringFields(t *testing.T) {
+
+	tests := []struct {
+		name  string
+		blank func(e *CefEvent)
+	}{
+		{"DeviceVendor", func(e *CefEvent) { e.DeviceVendor = "" }},
+		{"DeviceProduct", func(e *CefEvent) { e.DeviceProduct = "" }},
+		{"DeviceVersion", func(e *CefEvent) { e.DeviceVersion = "" }},
+		{"DeviceEventClassId", func(e *CefEvent) { e.DeviceEventClassId = "" }},
+		{"Name", func(e *CefEvent) { e.Name = "" }},
+		{"Severity", func(e *CefEvent) { e.Severity = "" }},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			brokenEvent := event
+			tt.blank(&brokenEvent)
+
+			_, err := brokenEvent.String()
+			if err == nil {
+				t.Fatalf("String() = nil error, want one for a blank %s", tt.name)
+			}
+			if !errors.Is(err, ErrMandatoryFieldMissing) {
+				t.Errorf("String() error = %v, want errors.Is(err, ErrMandatoryFieldMissing)", err)
+			}
+		})
+	}
+}
+
+// Version has no "missing" state to test: its zero value (0) is itself a valid CEF
+// version (see the field's own doc comment), not a sentinel for "unset". This locks in
+// that Validate/String accept it rather than pretending Version can be blanked out like
+// the string fields above - see Validate's doc comment for why.
+func TestCefEventVersionZeroValueIsValid(t *testing.T) {
+
+	e := event
+	e.Version = 0
+
+	if _, err := e.String(); err != nil {
+		t.Errorf("String() = %v, want nil: Version's zero value is a valid CEF version, not a missing field", err)
+	}
+}
+
+func TestSentinelErrors(t *testing.T) {
 
 	brokenEvent := event
 	brokenEvent.DeviceVendor = ""
-	_, err := brokenEvent.String()
 
-	if err == nil {
-		t.Errorf("%v", err)
+	if _, err := brokenEvent.Build(); !errors.Is(err, ErrMandatoryFieldMissing) {
+		t.Errorf("Build() error = %v, want errors.Is(err, ErrMandatoryFieldMissing)", err)
 	}
-}
 
-func TestCefEventMandatoryDeviceVendorField(t *testing.T) {
-
-	brokenEvent := event
-	brokenEvent.DeviceVendor = ""
-	_, err := brokenEvent.String()
-
-	if err == nil {
-		t.Errorf("%v", err)
+	if _, err := brokenEvent.ToJSON(); !errors.Is(err, ErrMandatoryFieldMissing) {
+		t.Errorf("ToJSON() error = %v, want errors.Is(err, ErrMandatoryFieldMissing)", err)
 	}
-}
 
-func TestCefEventMandatoryDeviceProductField(t *testing.T) {
-
-	brokenEvent := event
-	brokenEvent.DeviceProduct = ""
-	_, err := brokenEvent.String()
-
-	if err == nil {
-		t.Errorf("%v", err)
+	if err := brokenEvent.Validate(); !errors.Is(err, ErrMandatoryFieldMissing) {
+		t.Errorf("Validate() error = %v, want errors.Is(err, ErrMandatoryFieldMissing)", err)
 	}
-}
 
-func TestCefEventMandatoryDeviceVersionField(t *testing.T) {
-
-	brokenEvent := event
-	brokenEvent.DeviceVersion = ""
-	_, err := brokenEvent.String()
-
-	if err == nil {
-		t.Errorf("%v", err)
+	if err := brokenEvent.Log(); !errors.Is(err, ErrMandatoryFieldMissing) {
+		t.Errorf("Log() error = %v, want errors.Is(err, ErrMandatoryFieldMissing) (Log wraps String's error with %%w)", err)
 	}
-}
 
-func TestCefEventMandatoryDeviceEventClassIdField(t *testing.T) {
+	newEvent := CefEvent{}
 
-	brokenEvent := event
-	brokenEvent.DeviceEventClassId = ""
-	_, err := brokenEvent.String()
-
-	if err == nil {
-		t.Errorf("%v", err)
+	if _, err := newEvent.Read("not a CEF message"); !errors.Is(err, ErrInvalidMessage) {
+		t.Errorf("Read() error = %v, want errors.Is(err, ErrInvalidMessage)", err)
 	}
-}
 
-func TestCefEventMandatoryNameField(t *testing.T) {
-
-	brokenEvent := event
-	brokenEvent.Name = ""
-	_, err := brokenEvent.String()
-
-	if err == nil {
-		t.Errorf("%v", err)
+	if _, err := newEvent.Read("CEF:0|too|short"); !errors.Is(err, ErrInvalidMessage) {
+		t.Errorf("Read() error = %v, want errors.Is(err, ErrInvalidMessage)", err)
 	}
-}
 
-func TestCefEventMandatorySeverityField(t *testing.T) {
-
-	brokenEvent := event
-	brokenEvent.Severity = ""
-	_, err := brokenEvent.String()
-
-	if err == nil {
-		t.Errorf("%v", err)
+	if _, err := newEvent.Read("CEF:0||Product|1.0|COOL_THING|Something cool happened.|Unknown"); !errors.Is(err, ErrMandatoryFieldMissing) {
+		t.Errorf("Read() error = %v, want errors.Is(err, ErrMandatoryFieldMissing) for an empty DeviceVendor", err)
 	}
 }
 

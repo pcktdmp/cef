@@ -30,5 +30,17 @@ jobs:
             dep ensure
         fi
 
+    - name: Check formatting (gofmt)
+      run: |
+        unformatted=$(gofmt -l .)
+        if [ -n "$unformatted" ]; then
+          echo "The following files are not gofmt'd:"
+          echo "$unformatted"
+          exit 1
+        fi
+
+    - name: Vet
+      run: go vet ./...
+
     - name: Test
       run: cd cefevent && go test -v

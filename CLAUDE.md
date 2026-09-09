@@ -11,8 +11,9 @@ spec's field-length or field-type rules. Opt-in enforcement of those exists
 `TruncateToLimits` in `cefevent/limits.go`, `ValidateExtensionTypes` in
 `cefevent/types.go` — see "Field-length limits" and "Other opt-in helpers" below),
 but it is always the caller's choice to invoke it — nothing in the core Generate/Parse
-path calls any of it automatically. The module root (`examples.go`) is a runnable demo
-package, not part of the library API.
+path calls any of it automatically. `examples/main.go` is a runnable demo package, not
+part of the library API — it moved out of the module root so `go doc`/pkg.go.dev list
+this module as the `cefevent` package rather than a `command`.
 
 ## Field-length limits
 
@@ -77,11 +78,12 @@ cd cefevent && go test -run TestCefEventParsed -v
 go build -v cefevent/cefevent.go
 
 # Run the example program
-go run examples.go
+go run ./examples
 ```
 
-There is no lint config or Makefile in the repo; `golangci-lint`/`gopls` are available
-in the devcontainer but not wired into CI.
+There is no lint config (`golangci-lint`) or Makefile in the repo — `golangci-lint`/
+`gopls` are available in the devcontainer but not wired into CI. `go vet` and a
+`gofmt -l` formatting check do run in CI (`test.yml`), and will fail the build.
 
 ## Architecture
 

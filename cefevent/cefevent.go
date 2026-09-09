@@ -24,6 +24,27 @@ type CefEventer interface {
 	escapeEventData() error             // escapeEventData will try to escape all data properly in the struct according the Common Event Format.
 }
 
+// Sentinel errors returned by CefEvent's methods. Compare against these with
+// errors.Is rather than matching on an error's message text.
+var (
+	// ErrMandatoryFieldMissing is returned when one or more of the seven mandatory
+	// CEF fields (Version, DeviceVendor, DeviceProduct, DeviceVersion,
+	// DeviceEventClassId, Name, Severity) is unset. Returned by Validate, Build,
+	// String, Read, and ToJSON.
+	ErrMandatoryFieldMissing = errors.New("cefevent: not all mandatory CEF fields are set")
+
+	// ErrInvalidMessage is returned by Read when the input isn't a well-formed CEF
+	// message: it doesn't start with the "CEF:" prefix, or it's missing one or
+	// more of the 7 mandatory header fields.
+	ErrInvalidMessage = errors.New("cefevent: not a valid CEF message")
+
+	// ErrEscapeFailed is returned by Build, String, and ToJSON if escaping event
+	// data fails. In the current implementation this can't actually happen -
+	// escapeEventData never returns a non-nil error - but the error path exists
+	// for CefEventer interface completeness and forward compatibility.
+	ErrEscapeFailed = errors.New("cefevent: unable to escape CEF event data")
+)
+
 // CefEvent represents a Common Event Format (CEF) event.
 // It includes fields for CEF version, device vendor, device product, device version,
 // device event class ID, event name, event severity, and additional extensions.
@@ -282,6 +303,11 @@ func (event *CefEvent) escapeEventData() error {
 // otherwise, it returns an error.
 //
 // This method uses reflection to loop over the mandatory fields and check their values.
+// The check is effectively a string-emptiness check (reflect.Value.String() == ""), so
+// it never rejects Version specifically: String() on a non-string Kind like int returns
+// a fixed placeholder ("<int Value>"), never "". That's harmless here because Version's
+// zero value (0) is itself a valid, meaningful CEF version — see the field's own doc
+// comment — so there's no "unset" state for Validate to distinguish it from anyway.
 //
 // Returns:
 // - An error message indicating whether all mandatory fields are set (err) or not (nil).
@@ -307,7 +333,7 @@ func (event *CefEvent) Validate() error {
 	for _, field := range mandatoryFields {
 
 		if assertEvent.FieldByName(field).String() == "" {
-			return errors.New("not all mandatory CEF fields are set")
+			return ErrMandatoryFieldMissing
 		}
 	}
 
@@ -331,9 +357,9 @@ func (event *CefEvent) Log() error {
 
 	if err != nil {
 		log.SetOutput(os.Stderr)
-		errMsg := "unable to create and thereby log the CEF message"
-		log.Println(errMsg)
-		return errors.New(errMsg)
+		wrapped := fmt.Errorf("cefevent: unable to create and thereby log the CEF message: %w", err)
+		log.Println(wrapped)
+		return wrapped
 	}
 
 	log.SetOutput(os.Stdout)
@@ -353,12 +379,12 @@ func (event *CefEvent) Log() error {
 func (event *CefEvent) Build() (CefEvent, error) {
 
 	if event.Validate() != nil {
-		return CefEvent{}, errors.New("not all mandatory CEF fields are set")
+		return CefEvent{}, ErrMandatoryFieldMissing
 	}
 
 	escaped := *event
 	if escaped.escapeEventData() != nil {
-		return CefEvent{}, errors.New("unable to escape CEF event data")
+		return CefEvent{}, ErrEscapeFailed
 	}
 
 	return escaped, nil
@@ -382,12 +408,12 @@ func (event *CefEvent) Build() (CefEvent, error) {
 func (event *CefEvent) String() (string, error) {
 
 	if CefEventer.Validate(event) != nil {
-		return "", errors.New("not all mandatory CEF fields are set")
+		return "", ErrMandatoryFieldMissing
 	}
 
 	escaped := *event
 	if escaped.escapeEventData() != nil {
-		return "", errors.New("unable to escape CEF event data")
+		return "", ErrEscapeFailed
 	}
 
 	var p strings.Builder
@@ -451,7 +477,7 @@ func (event *CefEvent) Read(eventLine string) (CefEvent, error) {
 		// DeviceEventClassId, Name, Severity) before we can safely
 		// index into eventSlashed below.
 		if len(eventSlashed) < 7 {
-			return CefEvent{}, errors.New("not a valid CEF message")
+			return CefEvent{}, ErrInvalidMessage
 		}
 
 		// convert CEF version to int
@@ -487,12 +513,12 @@ func (event *CefEvent) Read(eventLine string) (CefEvent, error) {
 		event.Extensions = parsedExtensions
 
 		if CefEventer.Validate(event) != nil {
-			return CefEvent{}, errors.New("not all mandatory CEF fields are set")
+			return CefEvent{}, ErrMandatoryFieldMissing
 		}
 
 		return *event, nil
 	}
-	return CefEvent{}, errors.New("not a valid CEF message")
+	return CefEvent{}, ErrInvalidMessage
 }
 
 // ToJSON converts the CefEvent instance to a JSON string.
@@ -511,12 +537,12 @@ func (event *CefEvent) Read(eventLine string) (CefEvent, error) {
 func (event *CefEvent) ToJSON() (string, error) {
 
 	if CefEventer.Validate(event) != nil {
-		return "", errors.New("not all mandatory CEF fields are set")
+		return "", ErrMandatoryFieldMissing
 	}
 
 	escaped := *event
 	if escaped.escapeEventData() != nil {
-		return "", errors.New("unable to escape CEF event data")
+		return "", ErrEscapeFailed
 	}
 
 	// Attempt to convert the event to JSON
