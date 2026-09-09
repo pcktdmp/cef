@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"reflect"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -83,6 +84,159 @@ func cefEscapeExtension(field string) string {
 	)
 
 	return replacer.Replace(field)
+}
+
+// cefUnescapeField reverses cefEscapeField: "\\" becomes "\", "\|" becomes "|", and
+// "\n" (a literal backslash followed by "n") becomes a newline character. An
+// unrecognized escape sequence (a "\" followed by anything else) is passed through
+// unchanged rather than dropping the backslash.
+func cefUnescapeField(field string) string {
+
+	var b strings.Builder
+	b.Grow(len(field))
+
+	for i := 0; i < len(field); i++ {
+		if field[i] == '\\' && i+1 < len(field) {
+			switch field[i+1] {
+			case '\\':
+				b.WriteByte('\\')
+			case '|':
+				b.WriteByte('|')
+			case 'n':
+				b.WriteByte('\n')
+			default:
+				b.WriteByte(field[i])
+				b.WriteByte(field[i+1])
+			}
+			i++
+			continue
+		}
+		b.WriteByte(field[i])
+	}
+
+	return b.String()
+}
+
+// cefUnescapeExtension reverses cefEscapeExtension: "\\" becomes "\", "\n" (a literal
+// backslash followed by "n") becomes a newline character, and "\=" becomes "=". An
+// unrecognized escape sequence is passed through unchanged rather than dropping the
+// backslash.
+func cefUnescapeExtension(field string) string {
+
+	var b strings.Builder
+	b.Grow(len(field))
+
+	for i := 0; i < len(field); i++ {
+		if field[i] == '\\' && i+1 < len(field) {
+			switch field[i+1] {
+			case '\\':
+				b.WriteByte('\\')
+			case 'n':
+				b.WriteByte('\n')
+			case '=':
+				b.WriteByte('=')
+			default:
+				b.WriteByte(field[i])
+				b.WriteByte(field[i+1])
+			}
+			i++
+			continue
+		}
+		b.WriteByte(field[i])
+	}
+
+	return b.String()
+}
+
+// splitUnescapedPipes splits s on "|" characters that are not escaped with a
+// preceding "\" (mirroring the escaping cefEscapeField applies to header fields, so
+// a header field containing an escaped "\|" is not mistaken for a field separator).
+//
+// If n > 0, splitting stops after n-1 splits and the final element holds the
+// unprocessed remainder of s, exactly like strings.SplitN — this is what lets Read
+// treat everything after the 7th unescaped "|" as one opaque extensions blob, even if
+// it contains further (unescaped, and therefore legitimate per the CEF spec) "|"
+// characters. n <= 0 splits on every unescaped "|".
+func splitUnescapedPipes(s string, n int) []string {
+
+	var parts []string
+	start := 0
+
+	for i := 0; i < len(s); i++ {
+		if n > 0 && len(parts) == n-1 {
+			break
+		}
+		if s[i] == '\\' && i+1 < len(s) {
+			i++
+			continue
+		}
+		if s[i] == '|' {
+			parts = append(parts, s[start:i])
+			start = i + 1
+		}
+	}
+
+	parts = append(parts, s[start:])
+	return parts
+}
+
+// extensionKeyPattern finds the start of a CEF extension key: a run of letters,
+// digits, "_" and "." beginning with a letter, immediately followed by "=", and
+// preceded by either the start of the string or a single whitespace character. CEF
+// key names are never escaped, so this deliberately doesn't need to worry about
+// escape sequences the way header-field splitting does.
+//
+// The spec's own "Custom Extension Naming Guidelines" call for custom keys to be a
+// single alphanumeric word, but real-world producers routinely ignore that and use
+// "_"/"." anyway (e.g. underscore-separated names) — matching String()'s existing
+// leniency (it never validates key format at all), this stays permissive rather than
+// rejecting keys the spec's guidelines merely recommend against.
+//
+// Using a single "\s" (rather than "\s*") is deliberate: per the CEF spec, when
+// multiple spaces precede a key, only the last of those spaces is the delimiter —
+// the rest belong to the previous value as trailing whitespace. A regexp search
+// scans left to right for the earliest match, so this pattern naturally lands on
+// that last space.
+var extensionKeyPattern = regexp.MustCompile(`(?:^|\s)([A-Za-z][A-Za-z0-9_.]*)=`)
+
+// splitExtensions parses a raw (still-escaped) CEF extension blob into its key/value
+// pairs. Values are returned still-escaped — apply cefUnescapeExtension to each
+// before using it — and may legitimately contain literal spaces, per the CEF spec's
+// own example ("filePath=/user/username/dir/my file name.txt" is a single key/value
+// pair, not two). Trailing spaces are trimmed from the final value only, per the same
+// spec note that motivates extensionKeyPattern's single-space matching.
+//
+// This can misparse a value that happens to contain literal " key=" text that was
+// not actually meant as a new key — that ambiguity is inherent to the CEF extension
+// format itself (it isn't reliably resolvable without a stricter grammar than the
+// spec defines), not something specific to this implementation.
+func splitExtensions(blob string) map[string]string {
+
+	result := make(map[string]string)
+
+	matches := extensionKeyPattern.FindAllStringSubmatchIndex(blob, -1)
+	if len(matches) == 0 {
+		return result
+	}
+
+	for i, m := range matches {
+		key := blob[m[2]:m[3]]
+
+		valueStart := m[1]
+		valueEnd := len(blob)
+		if i+1 < len(matches) {
+			valueEnd = matches[i+1][0]
+		}
+
+		value := blob[valueStart:valueEnd]
+		if i == len(matches)-1 {
+			value = strings.TrimRight(value, " ")
+		}
+
+		result[key] = value
+	}
+
+	return result
 }
 
 // escapeEventData processes and escapes all necessary fields within the CefEvent struct according
@@ -275,7 +429,12 @@ func (event *CefEvent) String() (string, error) {
 // - An error if the CEF message is improperly formatted or if any mandatory field is missing.
 func (event *CefEvent) Read(eventLine string) (CefEvent, error) {
 	if strings.HasPrefix(eventLine, "CEF:") {
-		eventSlashed := strings.Split(strings.TrimPrefix(eventLine, "CEF:"), "|")
+		// Split on the first 7 unescaped "|" characters only: this both honors an
+		// escaped "\|" inside a header field (so it isn't mistaken for the field
+		// separator) and treats everything after the 7th as one opaque extensions
+		// blob, even if it contains further "|" characters — which is legitimate
+		// there, since the spec only requires escaping "|" in header fields.
+		eventSlashed := splitUnescapedPipes(strings.TrimPrefix(eventLine, "CEF:"), 8)
 
 		// there must be at least the 7 mandatory header fields
 		// (Version, DeviceVendor, DeviceProduct, DeviceVersion,
@@ -294,29 +453,28 @@ func (event *CefEvent) Read(eventLine string) (CefEvent, error) {
 		event.Version = cefVersion
 		parsedExtensions := make(map[string]string)
 
-		// each extension k,v is separated by a " ".
-		// in the substring, "=" separator defines the kv pair of the extension
+		// splitExtensions locates key/value pairs by their " key=" boundaries
+		// rather than naively splitting on every space, since extension values
+		// may legitimately contain spaces. Its values come back still-escaped,
+		// hence cefUnescapeExtension below.
 		if len(eventSlashed) >= 8 {
-			extensions := strings.Split(eventSlashed[7], " ")
-			for _, ext := range extensions {
-				kv := strings.SplitN(ext, "=", 2)
-				if len(kv) == 2 {
-					parsedExtensions[kv[0]] = kv[1]
-				}
+			for k, v := range splitExtensions(eventSlashed[7]) {
+				parsedExtensions[k] = cefUnescapeExtension(v)
 			}
 		}
 
-		event.DeviceVendor = eventSlashed[1]
-		event.DeviceProduct = eventSlashed[2]
-		event.DeviceVersion = eventSlashed[3]
-		event.DeviceEventClassId = eventSlashed[4]
-		event.Name = eventSlashed[5]
-		event.Severity = eventSlashed[6]
+		// The struct's fields always hold raw, unescaped data — the same
+		// invariant a freshly constructed CefEvent{} has — so String()/Build()
+		// can escape it symmetrically when generating a message. Unescaping
+		// here (rather than the former re-escaping) is what makes Read the
+		// correct inverse of String/Build.
+		event.DeviceVendor = cefUnescapeField(eventSlashed[1])
+		event.DeviceProduct = cefUnescapeField(eventSlashed[2])
+		event.DeviceVersion = cefUnescapeField(eventSlashed[3])
+		event.DeviceEventClassId = cefUnescapeField(eventSlashed[4])
+		event.Name = cefUnescapeField(eventSlashed[5])
+		event.Severity = cefUnescapeField(eventSlashed[6])
 		event.Extensions = parsedExtensions
-
-		if event.escapeEventData() != nil {
-			return CefEvent{}, errors.New("could not escape CEF event data")
-		}
 
 		if CefEventer.Validate(event) != nil {
 			return CefEvent{}, errors.New("not all mandatory CEF fields are set")

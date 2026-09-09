@@ -139,6 +139,105 @@ func TestCefEventParsedEmptyMandatoryField(t *testing.T) {
 	}
 }
 
+func TestCefEventReadUnescapesLikeStringEscapes(t *testing.T) {
+
+	// The value, not the key, carries the special characters here: CEF keys
+	// (standard or custom) are always plain identifiers, so it's the value's
+	// escape round trip that matters for a realistic message.
+	original := event
+	original.DeviceVendor = "\\Cool\nVendor|"
+	original.Extensions = map[string]string{"cs1": "a\\b\nc=d"}
+
+	// String() has a pointer receiver and mutates the receiver in place
+	// (escapeEventData escapes event.DeviceVendor/.../.Extensions), so snapshot
+	// the pre-escape, raw values we expect Read to reconstruct before calling it.
+	want := original
+	want.Extensions = map[string]string{"cs1": "a\\b\nc=d"}
+
+	wire, err := original.String()
+	if err != nil {
+		t.Fatalf("String() returned an unexpected error: %v", err)
+	}
+
+	roundTripped := CefEvent{}
+	got, err := roundTripped.Read(wire)
+	if err != nil {
+		t.Fatalf("Read() returned an unexpected error: %v", err)
+	}
+
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("Read(String()) = %+v, want %+v (round trip should be lossless)", got, want)
+	}
+}
+
+func TestCefEventReadHandlesEscapedPipeInHeaderField(t *testing.T) {
+
+	newEvent := CefEvent{}
+
+	got, err := newEvent.Read("CEF:0|A\\|B|Cool Product|1.0|COOL_THING|Something cool happened.|Unknown")
+	if err != nil {
+		t.Fatalf("Read() returned an unexpected error: %v", err)
+	}
+
+	if got.DeviceVendor != "A|B" {
+		t.Errorf("DeviceVendor = %q, want %q", got.DeviceVendor, "A|B")
+	}
+}
+
+func TestCefEventReadHandlesSpaceInExtensionValue(t *testing.T) {
+
+	newEvent := CefEvent{}
+
+	// straight from the CEF spec's own example of a legitimate space-containing value.
+	got, err := newEvent.Read("CEF:0|Cool Vendor|Cool Product|1.0|COOL_THING|Something cool happened.|Unknown|filePath=/user/username/dir/my file name.txt act=block")
+	if err != nil {
+		t.Fatalf("Read() returned an unexpected error: %v", err)
+	}
+
+	want := map[string]string{
+		"filePath": "/user/username/dir/my file name.txt",
+		"act":      "block",
+	}
+	if !reflect.DeepEqual(want, got.Extensions) {
+		t.Errorf("Extensions = %v, want %v", got.Extensions, want)
+	}
+}
+
+func TestCefEventReadHandlesUnescapedPipeInExtensionValue(t *testing.T) {
+
+	newEvent := CefEvent{}
+
+	// "|" is only required to be escaped in header fields, not extension values.
+	got, err := newEvent.Read("CEF:0|Cool Vendor|Cool Product|1.0|COOL_THING|Something cool happened.|Unknown|msg=a|b")
+	if err != nil {
+		t.Fatalf("Read() returned an unexpected error: %v", err)
+	}
+
+	if got.Extensions["msg"] != "a|b" {
+		t.Errorf("Extensions[\"msg\"] = %q, want %q", got.Extensions["msg"], "a|b")
+	}
+}
+
+func TestCefEventReadTrimsTrailingSpaceOnFinalValueOnly(t *testing.T) {
+
+	newEvent := CefEvent{}
+
+	// Multiple spaces before a key: all but the last belong to the prior value.
+	// Trailing spaces on the very last value, though, are dropped.
+	got, err := newEvent.Read("CEF:0|Cool Vendor|Cool Product|1.0|COOL_THING|Something cool happened.|Unknown|a=one   act=two  ")
+	if err != nil {
+		t.Fatalf("Read() returned an unexpected error: %v", err)
+	}
+
+	want := map[string]string{
+		"a":   "one  ",
+		"act": "two",
+	}
+	if !reflect.DeepEqual(want, got.Extensions) {
+		t.Errorf("Extensions = %v, want %v", got.Extensions, want)
+	}
+}
+
 func TestCefEventEscape(t *testing.T) {
 
 	extLocal := make(map[string]string)
