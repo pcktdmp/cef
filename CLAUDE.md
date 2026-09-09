@@ -81,8 +81,9 @@ go build -v cefevent/cefevent.go
 go run ./examples
 ```
 
-There is no lint config or Makefile in the repo; `golangci-lint`/`gopls` are available
-in the devcontainer but not wired into CI.
+There is no lint config (`golangci-lint`) or Makefile in the repo — `golangci-lint`/
+`gopls` are available in the devcontainer but not wired into CI. `go vet` and a
+`gofmt -l` formatting check do run in CI (`test.yml`), and will fail the build.
 
 ## Architecture
 
