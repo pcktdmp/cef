@@ -126,6 +126,15 @@ halves of `ValidateFieldLengths`, if you only need one. See the doc comments on
 package for exactly which fields and keys are covered — the type map in particular is a
 curated subset (see [`CEF-SPEC.md`](CEF-SPEC.md)), not every non-string key in the spec.
 
+## Converting to JSON
+
+`ToJSON()` validates and escapes the event the same way `String()`/`Build()` do, then
+marshals it to a JSON string:
+
+```go
+jsonStr, err := event.ToJSON()
+```
+
 ## Parsing more than one line
 
 `Read` parses a single CEF message. To parse a log file or a multi-line string, use
